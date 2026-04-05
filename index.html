@@ -167,19 +167,23 @@
             
             tbody.innerHTML = ''; // 清空舊內容
 
-            data.forEach(item => {
-                const row = document.createElement('tr');
-                // ID 文字使用 <strong> 強調
-                row.innerHTML = `
-                    <td>${item.keyword}</td>
-                    <td>${item.wc}</td>
-                    <td class="copyable" onclick="copyToClipboard('${item.id}')">
-                        <strong>${item.id.replace(/\n/g, '<br>')}</strong>
-                    </td>
-                    <td><img src="${item.img}" class="item-img" onerror="this.src='https://via.placeholder.com/80/252525/39ff14?text=No+Img'"></td>
-                `;
-                tbody.appendChild(row);
-            });
+// --- 修改後的 loadData 核心部分 ---
+data.forEach(item => {
+    const row = document.createElement('tr');
+    
+    // 關鍵修正：先處理好帶有換行的 ID 文字，轉義成安全的字串
+    const safeId = item.id.replace(/\'/g, "\\'"); // 防止單引號破壞語法
+
+    row.innerHTML = `
+        <td>${item.keyword}</td>
+        <td>${item.wc}</td>
+        <td class="copyable" onclick="copyToClipboard(\`${safeId}\`)">
+            <strong>${item.id.replace(/\n/g, '<br>')}</strong>
+        </td>
+        <td><img src="${item.img}" class="item-img" onerror="this.src='https://via.placeholder.com/80/252525/39ff14?text=No+Img'"></td>
+    `;
+    tbody.appendChild(row);
+});
 
             document.getElementById('loader').style.display = 'none';
             document.getElementById('mainTable').style.display = 'table';
