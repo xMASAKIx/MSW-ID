@@ -1,0 +1,121 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>商品自動同步助手</title>
+    <style>
+        /* 基礎樣式設計 */
+        :root {
+            --header-bg: #6a5acd; /* 紫色標題 */
+            --cell-bg: #fffde7;   /* 淡黃色背景 */
+            --hover-bg: #fff59d;  /* 滑鼠移上去的顏色 */
+        }
+        body { font-family: "Microsoft JhengHei", sans-serif; background-color: #f4f4f9; margin: 0; padding: 20px; display: flex; justify-content: center; }
+        .container { width: 100%; max-width: 1000px; background: white; padding: 20px; border-radius: 12px; box-shadow: 0 4px 15px rgba(0,0,0,0.1); }
+        h2 { color: var(--header-bg); text-align: center; border-bottom: 2px solid var(--header-bg); padding-bottom: 10px; }
+
+        /* 表格樣式 */
+        table { width: 100%; border-collapse: collapse; margin-top: 15px; table-layout: fixed; }
+        th { background-color: var(--header-bg); color: white; padding: 12px; font-size: 16px; }
+        td { border: 1px solid #ddd; padding: 12px; text-align: center; background-color: var(--cell-bg); word-break: break-all; vertical-align: middle; }
+
+        /* 複製格的特殊樣式 */
+        .copyable { cursor: pointer; font-weight: bold; transition: 0.2s; position: relative; }
+        .copyable:hover { background-color: var(--hover-bg); }
+        .copyable:active { transform: scale(0.98); }
+        
+        /* 圖片樣式 */
+        .item-img { width: 80px; height: auto; border-radius: 5px; box-shadow: 0 2px 5px rgba(0,0,0,0.1); }
+
+        /* 載入中動畫 */
+        #loader { text-align: center; font-size: 18px; padding: 50px; color: #666; }
+
+        /* 彈出提示 (Toast) */
+        #toast {
+            visibility: hidden; min-width: 200px; background-color: #333; color: #fff;
+            text-align: center; border-radius: 8px; padding: 12px; position: fixed;
+            z-index: 100; left: 50%; bottom: 50px; transform: translateX(-50%);
+        }
+        #toast.show { visibility: visible; animation: fadein 0.5s, fadeout 0.5s 1.5s; }
+        @keyframes fadein { from {bottom: 0; opacity: 0;} to {bottom: 50px; opacity: 1;} }
+        @keyframes fadeout { from {bottom: 50px; opacity: 1;} to {bottom: 0; opacity: 0;} }
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <h2>商品清單 (點擊 ID 自動複製)</h2>
+    
+    <div id="loader">連線至雲端資料庫中...</div>
+    
+    <table id="mainTable" style="display: none;">
+        <thead>
+            <tr>
+                <th style="width: 25%;">關鍵字</th>
+                <th style="width: 20%;">WC</th>
+                <th style="width: 35%;">商品ID (點擊複製)</th>
+                <th style="width: 20%;">商品圖</th>
+            </tr>
+        </thead>
+        <tbody id="tableBody">
+            </tbody>
+    </table>
+</div>
+
+<div id="toast">已複製到剪貼簿</div>
+
+<script>
+    // --- 重要：請將下方的網址換成你自己的 npoint 或 GitHub JSON 網址 ---
+    const DATA_URL = 'https://api.npoint.io/你的ID'; 
+
+    async function loadData() {
+        try {
+            const response = await fetch(DATA_URL);
+            const data = await response.json();
+            const tbody = document.getElementById('tableBody');
+            
+            tbody.innerHTML = ''; // 清空舊內容
+
+            data.forEach(item => {
+                const row = document.createElement('tr');
+                row.innerHTML = `
+                    <td>${item.keyword}</td>
+                    <td>${item.wc}</td>
+                    <td class="copyable" onclick="copyToClipboard('${item.id}')">
+                        <strong>${item.id.replace(/\n/g, '<br>')}</strong>
+                    </td>
+                    <td><img src="${item.img}" class="item-img" onerror="this.src='https://via.placeholder.com/80?text=No+Img'"></td>
+                `;
+                tbody.appendChild(row);
+            });
+
+            document.getElementById('loader').style.display = 'none';
+            document.getElementById('mainTable').style.display = 'table';
+        } catch (error) {
+            document.getElementById('loader').innerText = '資料讀取失敗，請確認 JSON 網址是否正確。';
+            console.error('Fetch error:', error);
+        }
+    }
+
+    function copyToClipboard(text) {
+        navigator.clipboard.writeText(text).then(() => {
+            showToast("已複製: " + text);
+        }).catch(err => {
+            console.error('無法複製', err);
+        });
+    }
+
+    function showToast(message) {
+        const toast = document.getElementById("toast");
+        toast.innerText = message;
+        toast.className = "show";
+        setTimeout(() => { toast.className = toast.className.replace("show", ""); }, 2000);
+    }
+
+    // 啟動程式
+    window.onload = loadData;
+</script>
+
+</body>
+</html>
