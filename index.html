@@ -92,22 +92,28 @@
 
     async function loadData() {
         try {
+            // 加入防快取時間戳記
             const response = await fetch(`${DATA_URL}?t=${new Date().getTime()}`);
-            const data = await response.json();
+            let data = await response.json();
+            
+            // --- 核心改動：反轉陣列，讓最後一筆變第一筆 ---
+            data.reverse(); 
+
             const tbody = document.getElementById('tableBody');
             tbody.innerHTML = ''; 
 
             data.forEach(item => {
                 const row = document.createElement('tr');
                 
-                // 將 ID 字串依照換行符號 \n 切開變成陣列
+                // 將 ID 字串依照換行符號 \n 切開
                 const idLines = item.id.split('\n');
                 
-                // 為每一行 ID 建立一個獨立的 div 按鈕
                 let idHtml = '<div class="id-container">';
                 idLines.forEach(line => {
                     if(line.trim() !== "") {
-                        idHtml += `<div class="copy-item" onclick="copyToClipboard('${line.trim()}')">${line.trim()}</div>`;
+                        // 這裡使用反引號處理 JavaScript 傳參，並對單引號做簡單轉義
+                        const safeLine = line.trim().replace(/'/g, "\\'");
+                        idHtml += `<div class="copy-item" onclick="copyToClipboard('${safeLine}')">${line.trim()}</div>`;
                     }
                 });
                 idHtml += '</div>';
