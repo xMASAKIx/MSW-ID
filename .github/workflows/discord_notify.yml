@@ -1,19 +1,39 @@
-- name: Send notification
+name: Discord Detailed Notification
+
+on:
+  push:
+    paths:
+      - 'data.json'
+    branches:
+      - main
+
+jobs:
+  notify:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v3
+        with:
+          fetch-depth: 2 # 取得最近兩次紀錄以便比對
+
+      - name: Get Diff and Notify
         run: |
+          # 提取 data.json 的變動內容（只抓取新增的行並去除符號）
+          DIFF_CONTENT=$(git diff HEAD^ HEAD data.json | grep '^\+' | grep -v '^\+\+\+' | sed 's/^\+//' | head -n 15)
+          
+          # 如果內容太長，截斷它避免 Discord 報錯
+          CLEAN_DIFF=$(echo "$DIFF_CONTENT" | tr -d '"' | tr -d ',' | sed 's/^[[:space:]]*//')
+
+          # 發送至 Discord
           curl -H "Content-Type: application/json" \
           -X POST \
-          -d '{
-            "content": "✅ **MSW-ID 商品資料庫已更新**",
-            "embeds": [{
-              "title": "新商品上架",
-              "color": 15277667,
-              "fields": [
-                { "name": "商品名稱", "value": "희진 미스티 뚝", "inline": true },
-                { "name": "價格", "value": "10wc", "inline": true },
-                { "name": "商品 ID", "value": "LHL7I9OTM" }
-              ],
-              "url": "https://xmasakix.github.io/MSW-ID/",
-              "footer": { "text": "點擊上方標題可跳轉至網頁" }
+          -d "{
+            \"content\": \"🔔 **商品資料庫有變動！**\",
+            \"embeds\": [{
+              \"title\": \"偵測到檔案更新\",
+              \"description\": \"細節如下：\n\`\`\`json\n$CLEAN_DIFF\n\`\`\`\",
+              \"color\": 3447003,
+              \"footer\": { \"text\": \"前往網頁：https://xmasakix.github.io/MSW-ID/\" }
             }]
-          }' \
+          }" \
           ${{ secrets.DISCORD_WEBHOOK }}
