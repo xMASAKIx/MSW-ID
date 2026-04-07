@@ -1,0 +1,27 @@
+name: Discord Notification
+
+on:
+  push:
+    branches:
+      - main  # 如果你的分支叫 master，請改成 master
+
+jobs:
+  notify:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Send notification to Discord
+        run: |
+          curl -H "Content-Type: application/json" \
+          -X POST \
+          -d '{
+            "content": "🚀 **MSW-ID 商品更新通知**",
+            "embeds": [{
+              "title": "網頁內容已更新！",
+              "description": "新的商品資訊已經上線，快去看看吧：\nhttps://xmasakix.github.io/MSW-ID/",
+              "color": 5814783,
+              "footer": {
+                "text": "自動化通知系統"
+              }
+            }]
+          }' \
+          ${{ secrets.DISCORD_WEBHOOK }}
