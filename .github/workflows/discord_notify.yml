@@ -13,27 +13,31 @@ jobs:
     steps:
       - name: Checkout code
         uses: actions/checkout@v3
-        with:
-          fetch-depth: 2 # 取得最近兩次紀錄以便比對
 
-      - name: Get Diff and Notify
+      - name: Extract Last Item and Notify
         run: |
-          # 提取 data.json 的變動內容（只抓取新增的行並去除符號）
-          DIFF_CONTENT=$(git diff HEAD^ HEAD data.json | grep '^\+' | grep -v '^\+\+\+' | sed 's/^\+//' | head -n 15)
-          
-          # 如果內容太長，截斷它避免 Discord 報錯
-          CLEAN_DIFF=$(echo "$DIFF_CONTENT" | tr -d '"' | tr -d ',' | sed 's/^[[:space:]]*//')
+          # 1. 使用 jq 抓取 JSON 陣列中的最後一個物件內容
+          # 我們提取 keyword, wc, id 三個欄位
+          ITEM_NAME=$(jq -r '.[-1].keyword' data.json)
+          ITEM_PRICE=$(jq -r '.[-1].wc' data.json)
+          ITEM_ID=$(jq -r '.[-1].id' data.json)
+          ITEM_IMG=$(jq -r '.[-1].img' data.json)
 
-          # 發送至 Discord
+          # 2. 發送至 Discord，並排版得漂亮一點
           curl -H "Content-Type: application/json" \
           -X POST \
           -d "{
-            \"content\": \"🔔 **商品資料庫有變動！**\",
+            \"content\": \"📦 **MSW-ID 商品庫存更新！**\",
             \"embeds\": [{
-              \"title\": \"偵測到檔案更新\",
-              \"description\": \"細節如下：\n\`\`\`json\n$CLEAN_DIFF\n\`\`\`\",
-              \"color\": 3447003,
-              \"footer\": { \"text\": \"前往網頁：https://xmasakix.github.io/MSW-ID/\" }
+              \"title\": \"🆕 已新增商品：$ITEM_NAME\",
+              \"thumbnail\": { \"url\": \"$ITEM_IMG\" },
+              \"color\": 1752220,
+              \"fields\": [
+                { \"name\": \"價格\", \"value\": \"$ITEM_PRICE\", \"inline\": true },
+                { \"name\": \"商品 ID\", \"value\": \"$ITEM_ID\", \"inline\": true }
+              ],
+              \"description\": \"[點此開啟網頁查看](https://xmasakix.github.io/MSW-ID/)\",
+              \"footer\": { \"text\": \"自動化同步系統\" }
             }]
           }" \
           ${{ secrets.DISCORD_WEBHOOK }}
