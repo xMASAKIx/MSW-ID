@@ -1,25 +1,19 @@
-name: Discord Notification
-
-on:
-  push:
-    paths:
-      - 'data.json'  # 只有當這個檔案被修改時才發通知
-    branches:
-      - main
-
-jobs:
-  notify:
-    runs-on: ubuntu-latest
-    steps:
-      - name: Send notification
+- name: Send notification
         run: |
           curl -H "Content-Type: application/json" \
           -X POST \
           -d '{
-            "content": "📢 **MSW-ID 資料已更新！**",
+            "content": "✅ **MSW-ID 商品資料庫已更新**",
             "embeds": [{
-              "description": "新的商品資訊已同步至網頁。\n[點此查看](https://xmasakix.github.io/MSW-ID/)",
-              "color": 3066993
+              "title": "新商品上架",
+              "color": 15277667,
+              "fields": [
+                { "name": "商品名稱", "value": "희진 미스티 뚝", "inline": true },
+                { "name": "價格", "value": "10wc", "inline": true },
+                { "name": "商品 ID", "value": "LHL7I9OTM" }
+              ],
+              "url": "https://xmasakix.github.io/MSW-ID/",
+              "footer": { "text": "點擊上方標題可跳轉至網頁" }
             }]
           }' \
           ${{ secrets.DISCORD_WEBHOOK }}
