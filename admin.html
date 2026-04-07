@@ -1,0 +1,102 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>MSW-ID 後台管理</title>
+    <style>
+        body { font-family: -apple-system, sans-serif; background: #f4f7f9; padding: 40px; display: flex; justify-content: center; }
+        .card { background: white; padding: 30px; border-radius: 12px; box-shadow: 0 4px 20px rgba(0,0,0,0.1); width: 100%; max-width: 450px; }
+        h2 { color: #333; margin-bottom: 20px; text-align: center; }
+        label { display: block; margin-bottom: 5px; color: #666; font-size: 14px; }
+        input { width: 100%; padding: 12px; margin-bottom: 15px; border: 1px solid #ddd; border-radius: 6px; box-sizing: border-box; }
+        button { width: 100%; padding: 12px; background: #5865F2; color: white; border: none; border-radius: 6px; font-weight: bold; cursor: pointer; transition: 0.3s; }
+        button:hover { background: #4752c4; }
+        #status { margin-top: 15px; font-size: 14px; text-align: center; }
+    </style>
+</head>
+<body>
+    <div class="card">
+        <h2>📦 新增商品上架</h2>
+        
+        <label>GitHub Token (第一次使用請輸入)</label>
+        <input type="password" id="token" placeholder="github_pat_xxxxxx">
+        
+        <label>商品名稱 (keyword)</label>
+        <input type="text" id="keyword" placeholder="例如：희진 미스티 뚝">
+        
+        <label>價格 (wc)</label>
+        <input type="text" id="wc" placeholder="例如：10wc">
+        
+        <label>商品 ID (id)</label>
+        <input type="text" id="id" placeholder="例如：LHL7I9OTM">
+        
+        <label>圖片網址 (img)</label>
+        <input type="text" id="img" placeholder="http://...">
+        
+        <button onclick="updateGitHub()">🚀 立即上架並發送 Discord 通知</button>
+        <div id="status"></div>
+    </div>
+
+    <script>
+        async function updateGitHub() {
+            const token = document.getElementById('token').value;
+            const newItem = {
+                keyword: document.getElementById('keyword').value,
+                wc: document.getElementById('wc').value,
+                id: document.getElementById('id').value,
+                img: document.getElementById('img').value
+            };
+            const status = document.getElementById('status');
+
+            if(!token || !newItem.id) { alert("請填寫 Token 和商品 ID"); return; }
+            status.innerText = "⏳ 正在處理中...";
+
+            const owner = "xmasakix"; // 你的 GitHub 帳號
+            const repo = "MSW-ID";    // 你的倉庫名
+            const path = "data.json";  // 檔案路徑
+
+            try {
+                // 1. 取得舊檔案內容與 SHA
+                const res = await fetch(`https://api.github.com/repos/${owner}/${repo}/contents/${path}`, {
+                    headers: { "Authorization": `token ${token}` }
+                });
+                const fileData = await res.json();
+                const oldContent = JSON.parse(atob(fileData.content));
+
+                // 2. 加入新內容
+                oldContent.push(newItem);
+                const newBody = b64EncodeUnicode(JSON.stringify(oldContent, null, 2));
+
+                // 3. 寫回 GitHub
+                const updateRes = await fetch(`https://api.github.com/repos/${owner}/${repo}/contents/${path}`, {
+                    method: "PUT",
+                    headers: { "Authorization": `token ${token}`, "Content-Type": "application/json" },
+                    body: JSON.stringify({
+                        message: `Update data.json: Added ${newItem.keyword}`,
+                        content: newBody,
+                        sha: fileData.sha
+                    })
+                });
+
+                if(updateRes.ok) {
+                    status.style.color = "green";
+                    status.innerText = "✅ 上架成功！Discord 通知將在數秒內發送。";
+                } else {
+                    throw new Error("更新失敗");
+                }
+            } catch (err) {
+                status.style.color = "red";
+                status.innerText = "❌ 錯誤：" + err.message;
+            }
+        }
+
+        // 處理中文字元的 Base64 編碼函數
+        function b64EncodeUnicode(str) {
+            return btoa(encodeURIComponent(str).replace(/%([0-9A-F]{2})/g, function(match, p1) {
+                return String.fromCharCode('0x' + p1);
+            }));
+        }
+    </script>
+</body>
+</html>
