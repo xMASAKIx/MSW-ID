@@ -36,8 +36,8 @@ jobs:
                 { \"name\": \"價格\", \"value\": \"$ITEM_PRICE\", \"inline\": true },
                 { \"name\": \"商品 ID\", \"value\": \"$ITEM_ID\", \"inline\": true }
               ],
-              \"description\": \"[點此開啟網頁查看](https://xmasakix.github.io/MSW-ID/)\",
-              \"footer\": { \"text\": \"自動化同步系統\" }
+              \"description\": \"[點擊開啟網頁查看黑絲照](https://xmasakix.github.io/MSW-ID/)\",
+              \"footer\": { \"text\": \"好黑絲 不看嗎?\" }
             }]
           }" \
           ${{ secrets.DISCORD_WEBHOOK }}
