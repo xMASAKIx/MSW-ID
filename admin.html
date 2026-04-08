@@ -2,58 +2,38 @@
 <html lang="zh-TW">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>MSW-ID 後台管理</title>
+    <title>MSW 後台修正版</title>
     <style>
-        body { font-family: -apple-system, sans-serif; background: #f4f7f9; padding: 40px; display: flex; justify-content: center; }
-        .card { background: white; padding: 30px; border-radius: 12px; box-shadow: 0 4px 20px rgba(0,0,0,0.1); width: 100%; max-width: 450px; }
-        h2 { color: #333; margin-bottom: 20px; text-align: center; }
-        label { display: block; margin-bottom: 5px; color: #666; font-size: 14px; }
-        input { width: 100%; padding: 12px; margin-bottom: 15px; border: 1px solid #ddd; border-radius: 6px; box-sizing: border-box; }
-        button { width: 100%; padding: 12px; background: #5865F2; color: white; border: none; border-radius: 6px; font-weight: bold; cursor: pointer; transition: 0.3s; }
-        button:hover { background: #4752c4; }
-        #status { margin-top: 15px; font-size: 14px; text-align: center; white-space: pre-wrap; }
+        body { font-family: sans-serif; padding: 20px; background: #f0f2f5; display: flex; justify-content: center; }
+        .box { background: white; padding: 30px; border-radius: 12px; box-shadow: 0 4px 15px rgba(0,0,0,0.1); width: 100%; max-width: 400px; }
+        input { width: 100%; margin: 10px 0; padding: 12px; border: 1px solid #ddd; border-radius: 6px; box-sizing: border-box; }
+        button { width: 100%; padding: 12px; background: #5865F2; color: white; border: none; border-radius: 6px; cursor: pointer; font-weight: bold; }
+        button:disabled { background: #99aab5; }
+        #status { text-align: center; margin-top: 15px; font-size: 14px; white-space: pre-wrap; }
     </style>
 </head>
 <body>
-    <div class="card">
-        <h2>📦 新增商品上架</h2>
-        
-        <label>GitHub Token</label>
-        <input type="password" id="token" placeholder="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">
-        
-        <label>商品名稱 (keyword)</label>
-        <input type="text" id="keyword" placeholder="例如：희진 미스티 뚝">
-        
-        <label>價格 (wc)</label>
-        <input type="text" id="wc" placeholder="例如：10wc">
-        
-        <label>商品 ID (id)</label>
-        <input type="text" id="id" placeholder="例如：LHL7I9OTM">
-        
-        <label>圖片網址 (img)</label>
-        <input type="text" id="img" placeholder="http://...">
-        
-        <button id="submitBtn" onclick="updateGitHub()">🚀 立即上架並發送 Discord 通知</button>
+    <div class="box">
+        <h2>📦 新增商品</h2>
+        <input type="password" id="token" placeholder="GitHub Token">
+        <input type="text" id="keyword" placeholder="商品名稱 (keyword)">
+        <input type="text" id="wc" placeholder="價格 (wc)">
+        <input type="text" id="id" placeholder="商品 ID (id)">
+        <input type="text" id="img" placeholder="圖片網址 (img)">
+        <button id="btn" onclick="updateGitHub()">🚀 立即上架</button>
         <div id="status"></div>
     </div>
 
     <script>
-        // 支援 UTF-8 的 Base64 編解碼工具
         const UTF8 = {
-            encode(str) {
-                return btoa(unescape(encodeURIComponent(str)));
-            },
-            decode(str) {
-                return decodeURIComponent(escape(atob(str)));
-            }
+            encode(s) { return btoa(unescape(encodeURIComponent(s))); },
+            decode(s) { return decodeURIComponent(escape(atob(s))); }
         };
 
         async function updateGitHub() {
             const token = document.getElementById('token').value;
             const status = document.getElementById('status');
-            const btn = document.getElementById('submitBtn');
-            
+            const btn = document.getElementById('btn');
             const newItem = {
                 keyword: document.getElementById('keyword').value,
                 wc: document.getElementById('wc').value,
@@ -61,66 +41,55 @@
                 img: document.getElementById('img').value
             };
 
-            if(!token || !newItem.id || !newItem.keyword) { 
-                alert("請完整填寫 Token、商品名稱與 ID"); 
-                return; 
-            }
-
-            status.innerText = "⏳ 正在處理中...\n(讀取舊資料並編碼中)";
-            status.style.color = "#666";
+            if(!token || !newItem.id) return alert("請填寫 Token 與 ID");
+            
+            status.innerText = "⏳ 處理中...";
+            status.style.color = "blue";
             btn.disabled = true;
 
-            const owner = "xmasakix"; 
-            const repo = "MSW-ID";    
-            const path = "data.json";  
-
             try {
-                // 1. 取得舊檔案內容與 SHA
-                const res = await fetch(`https://api.github.com/repos/${owner}/${repo}/contents/${path}`, {
-                    headers: { "Authorization": `token ${token}`, "Cache-Control": "no-cache" }
+                // 修正點：移除 Cache-Control 標頭，避免 CORS 錯誤
+                const res = await fetch(`https://api.github.com/repos/xmasakix/MSW-ID/contents/data.json`, {
+                    headers: { 
+                        "Authorization": `token ${token}`,
+                        "Accept": "application/vnd.github.v3+json"
+                    }
                 });
-                
-                if (!res.ok) throw new Error("無法讀取 data.json，請檢查 Token 權限或帳號名稱");
-                
-                const fileData = await res.json();
-                
-                // 2. 解碼並加入新內容
-                const oldContent = JSON.parse(UTF8.decode(fileData.content));
-                oldContent.push(newItem);
-                
-                // 3. 重新編碼為 UTF-8 Base64
-                const newBody = UTF8.encode(JSON.stringify(oldContent, null, 2));
 
-                // 4. 寫回 GitHub
-                const updateRes = await fetch(`https://api.github.com/repos/${owner}/${repo}/contents/${path}`, {
+                if (!res.ok) throw new Error("存取失敗，請檢查 Token 是否正確");
+
+                const fileData = await res.json();
+                const content = JSON.parse(UTF8.decode(fileData.content));
+                content.push(newItem);
+
+                const update = await fetch(`https://api.github.com/repos/xmasakix/MSW-ID/contents/data.json`, {
                     method: "PUT",
                     headers: { 
                         "Authorization": `token ${token}`, 
                         "Content-Type": "application/json" 
                     },
                     body: JSON.stringify({
-                        message: `Update data.json: Added ${newItem.keyword}`,
-                        content: newBody,
+                        message: `Add item: ${newItem.keyword}`,
+                        content: UTF8.encode(JSON.stringify(content, null, 2)),
                         sha: fileData.sha
                     })
                 });
 
-                if(updateRes.ok) {
+                if(update.ok) {
+                    status.innerText = "✅ 上架成功！";
                     status.style.color = "green";
-                    status.innerText = "✅ 上架成功！\n資料已存入 GitHub，Discord 通知發送中。";
-                    // 清空輸入框（保留 Token）
+                    // 清空欄位
                     document.getElementById('keyword').value = "";
                     document.getElementById('wc').value = "";
                     document.getElementById('id').value = "";
                     document.getElementById('img').value = "";
                 } else {
-                    const errData = await updateRes.json();
-                    throw new Error(errData.message || "更新失敗");
+                    const err = await update.json();
+                    throw new Error(err.message);
                 }
-            } catch (err) {
+            } catch (e) { 
+                status.innerText = "❌ 錯誤：" + e.message;
                 status.style.color = "red";
-                status.innerText = "❌ 錯誤：" + err.message;
-                console.error(err);
             } finally {
                 btn.disabled = false;
             }
