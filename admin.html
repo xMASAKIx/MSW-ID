@@ -2,38 +2,63 @@
 <html lang="zh-TW">
 <head>
     <meta charset="UTF-8">
-    <title>MSW 後台修正版</title>
+    <title>MSW 後台 (自動記憶版)</title>
     <style>
         body { font-family: sans-serif; padding: 20px; background: #f0f2f5; display: flex; justify-content: center; }
         .box { background: white; padding: 30px; border-radius: 12px; box-shadow: 0 4px 15px rgba(0,0,0,0.1); width: 100%; max-width: 400px; }
-        input { width: 100%; margin: 10px 0; padding: 12px; border: 1px solid #ddd; border-radius: 6px; box-sizing: border-box; }
+        h2 { text-align: center; color: #333; }
+        label { font-size: 12px; color: #888; }
+        input { width: 100%; margin: 8px 0 15px 0; padding: 12px; border: 1px solid #ddd; border-radius: 6px; box-sizing: border-box; }
         button { width: 100%; padding: 12px; background: #5865F2; color: white; border: none; border-radius: 6px; cursor: pointer; font-weight: bold; }
         button:disabled { background: #99aab5; }
-        #status { text-align: center; margin-top: 15px; font-size: 14px; white-space: pre-wrap; }
+        #status { text-align: center; margin-top: 15px; font-size: 14px; white-space: pre-wrap; line-height: 1.5; }
     </style>
 </head>
 <body>
     <div class="box">
-        <h2>📦 新增商品</h2>
-        <input type="password" id="token" placeholder="GitHub Token">
-        <input type="text" id="keyword" placeholder="商品名稱 (keyword)">
-        <input type="text" id="wc" placeholder="價格 (wc)">
-        <input type="text" id="id" placeholder="商品 ID (id)">
-        <input type="text" id="img" placeholder="圖片網址 (img)">
+        <h2>📦 商品快速上架</h2>
+        
+        <label>GitHub Token (已自動儲存)</label>
+        <input type="password" id="token" placeholder="貼上一次後即自動記錄">
+        
+        <label>商品名稱 (keyword)</label>
+        <input type="text" id="keyword" placeholder="例如：희진 미스티 뚝">
+        
+        <label>價格 (wc)</label>
+        <input type="text" id="wc" placeholder="例如：10wc">
+        
+        <label>商品 ID (id)</label>
+        <input type="text" id="id" placeholder="例如：LHL7I9OTM">
+        
+        <label>圖片網址 (img)</label>
+        <input type="text" id="img" placeholder="http://...">
+        
         <button id="btn" onclick="updateGitHub()">🚀 立即上架</button>
         <div id="status"></div>
     </div>
 
     <script>
+        // 頁面載入時，自動從瀏覽器記憶體讀取 Token
+        window.onload = function() {
+            const savedToken = localStorage.getItem('msw_github_token');
+            if (savedToken) {
+                document.getElementById('token').value = savedToken;
+                document.getElementById('status').innerText = "✅ 已讀取儲存的 Token";
+                document.getElementById('status').style.color = "gray";
+            }
+        };
+
         const UTF8 = {
             encode(s) { return btoa(unescape(encodeURIComponent(s))); },
             decode(s) { return decodeURIComponent(escape(atob(s))); }
         };
 
         async function updateGitHub() {
-            const token = document.getElementById('token').value;
+            const tokenInput = document.getElementById('token');
+            const token = tokenInput.value;
             const status = document.getElementById('status');
             const btn = document.getElementById('btn');
+            
             const newItem = {
                 keyword: document.getElementById('keyword').value,
                 wc: document.getElementById('wc').value,
@@ -42,53 +67,54 @@
             };
 
             if(!token || !newItem.id) return alert("請填寫 Token 與 ID");
+
+            // 儲存 Token 到瀏覽器中
+            localStorage.setItem('msw_github_token', token);
             
-            status.innerText = "⏳ 處理中...";
+            status.innerText = "⏳ 正在處理...";
             status.style.color = "blue";
             btn.disabled = true;
 
+            const owner = "xmasakix"; 
+            const repo = "MSW-ID";
+            const path = "data.json";
+
             try {
-                // 修正點：移除 Cache-Control 標頭，避免 CORS 錯誤
-                const res = await fetch(`https://api.github.com/repos/xmasakix/MSW-ID/contents/data.json`, {
-                    headers: { 
-                        "Authorization": `token ${token}`,
-                        "Accept": "application/vnd.github.v3+json"
-                    }
+                const res = await fetch(`https://api.github.com/repos/${owner}/${repo}/contents/${path}`, {
+                    headers: { "Authorization": `token ${token}`, "Accept": "application/vnd.github.v3+json" }
                 });
 
-                if (!res.ok) throw new Error("存取失敗，請檢查 Token 是否正確");
+                if (res.status === 401) throw new Error("Token 錯誤 (401)");
+                if (res.status === 403) throw new Error("沒有寫入權限 (403)");
+                if (!res.ok) throw new Error(`連線失敗 (${res.status})`);
 
                 const fileData = await res.json();
                 const content = JSON.parse(UTF8.decode(fileData.content));
                 content.push(newItem);
 
-                const update = await fetch(`https://api.github.com/repos/xmasakix/MSW-ID/contents/data.json`, {
+                const updateRes = await fetch(`https://api.github.com/repos/${owner}/${repo}/contents/${path}`, {
                     method: "PUT",
-                    headers: { 
-                        "Authorization": `token ${token}`, 
-                        "Content-Type": "application/json" 
-                    },
+                    headers: { "Authorization": `token ${token}`, "Content-Type": "application/json" },
                     body: JSON.stringify({
-                        message: `Add item: ${newItem.keyword}`,
+                        message: `Add: ${newItem.keyword}`,
                         content: UTF8.encode(JSON.stringify(content, null, 2)),
                         sha: fileData.sha
                     })
                 });
 
-                if(update.ok) {
-                    status.innerText = "✅ 上架成功！";
+                if(updateRes.ok) {
+                    status.innerText = "✅ 上架成功！\nDiscord 通知發送中...";
                     status.style.color = "green";
-                    // 清空欄位
                     document.getElementById('keyword').value = "";
                     document.getElementById('wc').value = "";
                     document.getElementById('id').value = "";
                     document.getElementById('img').value = "";
                 } else {
-                    const err = await update.json();
-                    throw new Error(err.message);
+                    const errJson = await updateRes.json();
+                    throw new Error(errJson.message);
                 }
             } catch (e) { 
-                status.innerText = "❌ 錯誤：" + e.message;
+                status.innerText = "❌ " + e.message;
                 status.style.color = "red";
             } finally {
                 btn.disabled = false;
