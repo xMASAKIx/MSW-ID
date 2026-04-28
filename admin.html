@@ -2,15 +2,20 @@
 <html lang="zh-TW">
 <head>
     <meta charset="UTF-8">
-    <title>MSW 後台 (自動記憶版)</title>
+    <title>MSW 後台 (智能填入版)</title>
     <style>
         body { font-family: sans-serif; padding: 20px; background: #f0f2f5; display: flex; justify-content: center; }
         .box { background: white; padding: 30px; border-radius: 12px; box-shadow: 0 4px 15px rgba(0,0,0,0.1); width: 100%; max-width: 400px; }
-        h2 { text-align: center; color: #333; }
+        h2 { text-align: center; color: #333; margin-bottom: 20px; }
         label { font-size: 12px; color: #888; }
         input { width: 100%; margin: 8px 0 15px 0; padding: 12px; border: 1px solid #ddd; border-radius: 6px; box-sizing: border-box; }
-        button { width: 100%; padding: 12px; background: #5865F2; color: white; border: none; border-radius: 6px; cursor: pointer; font-weight: bold; }
-        button:disabled { background: #99aab5; }
+        
+        /* 按鈕樣式優化 */
+        .btn-group { display: flex; gap: 10px; margin-bottom: 15px; }
+        #paste-btn { flex: 1; padding: 10px; background: #43b581; color: white; border: none; border-radius: 6px; cursor: pointer; font-weight: bold; font-size: 14px; }
+        #btn { width: 100%; padding: 12px; background: #5865F2; color: white; border: none; border-radius: 6px; cursor: pointer; font-weight: bold; }
+        
+        button:disabled { background: #99aab5; opacity: 0.7; }
         #status { text-align: center; margin-top: 15px; font-size: 14px; white-space: pre-wrap; line-height: 1.5; }
     </style>
 </head>
@@ -18,11 +23,14 @@
     <div class="box">
         <h2>📦 商品快速上架</h2>
         
+        <button id="paste-btn" onclick="autoPasteAndParse()">📋 讀取剪貼簿並填入</button>
+        <hr style="border: 0; border-top: 1px solid #eee; margin: 15px 0;">
+
         <label>GitHub Token (已自動儲存)</label>
         <input type="password" id="token" placeholder="貼上一次後即自動記錄">
         
         <label>商品名稱 (keyword)</label>
-        <input type="text" id="keyword" placeholder="例如：희진 미스티 뚝">
+        <input type="text" id="keyword" placeholder="例如：희진 미スティ 뚝">
         
         <label>價格 (wc)</label>
         <input type="text" id="wc" placeholder="例如：10wc">
@@ -38,15 +46,51 @@
     </div>
 
     <script>
-        // 頁面載入時，自動從瀏覽器記憶體讀取 Token
         window.onload = function() {
             const savedToken = localStorage.getItem('msw_github_token');
             if (savedToken) {
                 document.getElementById('token').value = savedToken;
-                document.getElementById('status').innerText = "✅ 已讀取儲存的 Token";
-                document.getElementById('status').style.color = "gray";
+                updateStatus("✅ 已讀取儲存的 Token", "gray");
             }
         };
+
+        function updateStatus(msg, color) {
+            const s = document.getElementById('status');
+            s.innerText = msg;
+            s.style.color = color;
+        }
+
+        // --- 新增：自動解析功能 ---
+        async function autoPasteAndParse() {
+            try {
+                const text = await navigator.clipboard.readText();
+                if (!text) return alert("剪貼簿是空的！請先複製圖一的資料。");
+
+                // 1. 解析 ID (通常為 RRO 開頭或 8-10 位大寫英數)
+                const idMatch = text.match(/[A-Z0-9]{8,10}/);
+                // 2. 解析價格 (抓取數字 + WC)
+                const priceMatch = text.match(/(\d+)\s*WC/i);
+                // 3. 解析圖片連結
+                const imgMatch = text.match(/https:\/\/mod-file\.dn\.nexoncdn\.co\.kr\/[^\s]+/);
+                // 4. 解析商品名稱 (處理第一行或標註商品名稱後的部分)
+                let name = "";
+                if (text.includes("商品名稱")) {
+                    name = text.split("商品名稱")[1].split("\n")[0].trim();
+                } else {
+                    name = text.split("\n")[0].trim(); // 預設取第一行
+                }
+
+                if (idMatch) document.getElementById('id').value = idMatch[0];
+                if (priceMatch) document.getElementById('wc').value = priceMatch[1] + "wc";
+                if (imgMatch) document.getElementById('img').value = imgMatch[0];
+                if (name && name !== "o") document.getElementById('keyword').value = name;
+                else if (name === "o") document.getElementById('keyword').value = "o";
+
+                updateStatus("✨ 資料解析成功！", "green");
+            } catch (err) {
+                alert("無法讀取剪貼簿，請確保已授權權限或在 HTTPS 環境下執行。");
+            }
+        }
 
         const UTF8 = {
             encode(s) { return btoa(unescape(encodeURIComponent(s))); },
@@ -54,8 +98,7 @@
         };
 
         async function updateGitHub() {
-            const tokenInput = document.getElementById('token');
-            const token = tokenInput.value;
+            const token = document.getElementById('token').value;
             const status = document.getElementById('status');
             const btn = document.getElementById('btn');
             
@@ -68,11 +111,8 @@
 
             if(!token || !newItem.id) return alert("請填寫 Token 與 ID");
 
-            // 儲存 Token 到瀏覽器中
             localStorage.setItem('msw_github_token', token);
-            
-            status.innerText = "⏳ 正在處理...";
-            status.style.color = "blue";
+            updateStatus("⏳ 正在處理...", "blue");
             btn.disabled = true;
 
             const owner = "xmasakix"; 
@@ -84,8 +124,6 @@
                     headers: { "Authorization": `token ${token}`, "Accept": "application/vnd.github.v3+json" }
                 });
 
-                if (res.status === 401) throw new Error("Token 錯誤 (401)");
-                if (res.status === 403) throw new Error("沒有寫入權限 (403)");
                 if (!res.ok) throw new Error(`連線失敗 (${res.status})`);
 
                 const fileData = await res.json();
@@ -103,19 +141,14 @@
                 });
 
                 if(updateRes.ok) {
-                    status.innerText = "✅ 上架成功！\nDiscord 通知發送中...";
-                    status.style.color = "green";
-                    document.getElementById('keyword').value = "";
-                    document.getElementById('wc').value = "";
-                    document.getElementById('id').value = "";
-                    document.getElementById('img').value = "";
+                    updateStatus("✅ 上架成功！\nDiscord 通知發送中...", "green");
+                    ["keyword", "wc", "id", "img"].forEach(id => document.getElementById(id).value = "");
                 } else {
                     const errJson = await updateRes.json();
                     throw new Error(errJson.message);
                 }
             } catch (e) { 
-                status.innerText = "❌ " + e.message;
-                status.style.color = "red";
+                updateStatus("❌ " + e.message, "red");
             } finally {
                 btn.disabled = false;
             }
