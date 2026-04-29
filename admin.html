@@ -2,14 +2,13 @@
 <html lang="zh-TW">
 <head>
     <meta charset="UTF-8">
-    <title>MSW 後台 (混合智慧版)</title>
+    <title>MSW 後台 (精準辨識版)</title>
     <script src="https://cdn.jsdelivr.net/npm/tesseract.js@5/dist/tesseract.min.js"></script>
     <style>
         body { font-family: 'Segoe UI', system-ui, sans-serif; padding: 20px; background: #f0f2f5; display: flex; justify-content: center; }
         .box { background: white; padding: 30px; border-radius: 12px; box-shadow: 0 8px 24px rgba(0,0,0,0.1); width: 100%; max-width: 420px; }
         h2 { text-align: center; color: #1a1d23; margin-bottom: 20px; }
         
-        /* OCR 截圖區樣式 */
         .ocr-zone { 
             background: #f8fafc; border: 2px dashed #cbd5e1; border-radius: 8px; 
             padding: 20px; text-align: center; margin-bottom: 20px; cursor: pointer;
@@ -19,8 +18,8 @@
         .ocr-loading { display: none; margin-bottom: 15px; color: #5865F2; font-weight: bold; font-size: 13px; text-align: center;}
         
         label { font-size: 12px; color: #666; font-weight: bold; }
-        .tag-clipboard { display: inline-block; background: #e9ecef; color: #495057; font-size: 10px; padding: 2px 5px; border-radius: 4px; margin-left: 5px; vertical-align: middle; }
-        .tag-ocr { display: inline-block; background: #d1e7dd; color: #0f5132; font-size: 10px; padding: 2px 5px; border-radius: 4px; margin-left: 5px; vertical-align: middle; }
+        .tag-clipboard { display: inline-block; background: #e9ecef; color: #495057; font-size: 10px; padding: 2px 5px; border-radius: 4px; margin-left: 5px; }
+        .tag-ocr { display: inline-block; background: #d1e7dd; color: #0f5132; font-size: 10px; padding: 2px 5px; border-radius: 4px; margin-left: 5px; }
 
         input { width: 100%; margin: 8px 0 15px 0; padding: 12px; border: 1px solid #dcdfe6; border-radius: 8px; box-sizing: border-box; }
         button { width: 100%; padding: 14px; background: #5865F2; color: white; border: none; border-radius: 8px; cursor: pointer; font-weight: bold; font-size: 16px; }
@@ -34,24 +33,24 @@
         
         <div class="ocr-zone" id="drop-zone">
             📷 點擊此處後「貼上截圖 (Ctrl+V)」<br>
-            辨識：名稱、價格、ID
+            僅辨識：<strong>名稱、價格</strong>
         </div>
-        <div id="ocr-progress" class="ocr-loading">⌛ 正在辨識截圖文字... <span id="percent">0%</span></div>
+        <div id="ocr-progress" class="ocr-loading">⌛ 辨識中... <span id="percent">0%</span></div>
 
         <label>GitHub Token</label>
-        <input type="password" id="token" placeholder="貼上一次後即自動記錄">
+        <input type="password" id="token" placeholder="Token 已自動記憶">
         
-        <label>商品名稱 (keyword) <span class="tag-ocr">OCR辨識</span></label>
+        <label>商品名稱 (keyword) <span class="tag-ocr">OCR</span></label>
         <input type="text" id="keyword" placeholder="等待辨識...">
         
-        <label>價格 (wc) <span class="tag-ocr">OCR辨識</span></label>
-        <input type="text" id="wc" placeholder="例如：10wc">
+        <label>價格 (wc) <span class="tag-ocr">OCR</span></label>
+        <input type="text" id="wc" placeholder="例如：143wc">
         
-        <label>商品 ID (id) <span class="tag-ocr">OCR辨識</span></label>
-        <input type="text" id="id" placeholder="例如：LHL7I9OTM">
+        <label>商品 ID (id) <span class="tag-clipboard">剪貼簿自動</span></label>
+        <input type="text" id="id" placeholder="自動抓取 9 位英數 ID">
         
-        <label>圖片網址 (img) <span class="tag-clipboard">剪貼簿自動抓取</span></label>
-        <input type="text" id="img" placeholder="https://...">
+        <label>圖片網址 (img) <span class="tag-clipboard">剪貼簿自動</span></label>
+        <input type="text" id="img" placeholder="自動抓取 https://...">
         
         <button id="btn" onclick="updateGitHub()">🚀 立即上架</button>
         <div id="status"></div>
@@ -65,97 +64,69 @@
         window.onload = () => {
             const savedToken = localStorage.getItem('msw_github_token');
             if (savedToken) document.getElementById('token').value = savedToken;
-
-            // 【功能 1】偵測頁面聚焦，自動讀取剪貼簿中的圖片網址
-            window.addEventListener('focus', autoPasteImageUrl);
+            window.addEventListener('focus', autoClipboardSync);
         };
 
-        // --- 功能 1：自動抓取剪貼簿圖片網址 ---
-        async function autoPasteImageUrl() {
+        // --- 自動同步剪貼簿 (ID 與 網址) ---
+        async function autoClipboardSync() {
             try {
                 const text = await navigator.clipboard.readText();
-                // 匹配 Nexon CDN 圖片連結
+                if (!text) return;
+
+                // 1. 匹配 ID (精準匹配 9 位大寫英數，避免抓到網址片段)
+                const idMatch = text.match(/\b[A-Z0-9]{9}\b/);
+                // 2. 匹配 Nexon 圖片連結
                 const imgMatch = text.match(/https:\/\/mod-file\.dn\.nexoncdn\.co\.kr\/[^\s]+/);
                 
-                if (imgMatch) {
-                    const imgInput = document.getElementById('img');
-                    // 如果原本沒資料，或資料不一樣，才填入
-                    if (imgInput.value !== imgMatch[0]) {
-                        imgInput.value = imgMatch[0];
-                        updateStatus("🔗 已自動更新圖片網址", "#5865F2");
-                    }
+                let updated = false;
+                if (idMatch && document.getElementById('id').value !== idMatch[0]) {
+                    document.getElementById('id').value = idMatch[0];
+                    updated = true;
                 }
-            } catch (e) {
-                console.log("Clipboard read blocked (normal for automation)");
-            }
+                if (imgMatch && document.getElementById('img').value !== imgMatch[0]) {
+                    document.getElementById('img').value = imgMatch[0];
+                    updated = true;
+                }
+
+                if (updated) updateStatus("📋 已同步剪貼簿 ID/網址", "#5865F2");
+            } catch (e) { console.log("Clipboard focus check failed"); }
         }
 
-        // --- 功能 2：OCR 辨識截圖文字 (名稱, 價格, ID) ---
-        
-        // 監聽貼上事件 (Ctrl + V)
+        // --- OCR 辨識 (僅限名稱與價格) ---
         document.addEventListener('paste', async (e) => {
             const items = e.clipboardData.items;
             for (let i = 0; i < items.length; i++) {
                 if (items[i].type.indexOf('image') !== -1) {
-                    const blob = items[i].getAsFile();
-                    runOCR(blob);
+                    runOCR(items[i].getAsFile());
                 }
             }
         });
 
-        async function runOCR(imageBlob) {
+        async function runOCR(blob) {
             ocrProgress.style.display = 'block';
-            status.innerText = "";
-            
             try {
-                // 初始化 Tesseract (辨識英文與繁體中文，如商品名稱含有韓文，可將 chi_tra 改為 kor)
-                const worker = await Tesseract.createWorker('eng+chi_tra', 1, {
-                    logger: m => {
-                        if (m.status === 'recognizing text') {
-                            percentText.innerText = Math.floor(m.progress * 100) + "%";
-                        }
-                    }
-                });
+                const worker = await Tesseract.createWorker('eng+chi_tra'); // 如有名稱是韓文可改為 kor
+                const { data: { text } } = await worker.recognize(blob);
+                
+                // 解析價格
+                const priceMatch = text.match(/(\d+)\s*[Ww][Cc]/);
+                if (priceMatch) document.getElementById('wc').value = priceMatch[1] + "wc";
+                
+                // 解析名稱 (排除價格行，取最長或第一行)
+                const lines = text.split('\n').map(l => l.trim()).filter(l => l.length > 1);
+                const nameCandidate = lines.find(l => !/[Ww][Cc]/.test(l));
+                if (nameCandidate) document.getElementById('keyword').value = nameCandidate.replace(/[:|\[\]]+/g, '').trim();
 
-                const { data: { text } } = await worker.recognize(imageBlob);
-                console.log("OCR 辨識結果：\n", text);
-                
-                parseOCRText(text);
-                
                 await worker.terminate();
                 ocrProgress.style.display = 'none';
-                updateStatus("✨ 截圖文字辨識完成！", "green");
+                updateStatus("✨ 截圖辨識成功 (名稱/價格)", "green");
             } catch (err) {
-                console.error(err);
-                updateStatus("❌ 辨識失敗，請重試", "red");
                 ocrProgress.style.display = 'none';
-            }
-        }
-
-        function parseOCRText(text) {
-            // 1. 解析 ID (通常為 8-11 位大寫英數)
-            const idMatch = text.match(/[A-Z0-9]{8,11}/);
-            // 2. 解析價格 (數字 + WC，不限大小寫)
-            const priceMatch = text.match(/(\d+)\s*[Ww][Cc]/);
-            
-            if (idMatch) document.getElementById('id').value = idMatch[0];
-            if (priceMatch) document.getElementById('wc').value = priceMatch[1] + "wc";
-            
-            // 3. 處理名稱 (通常為截圖中的第一行有效文字)
-            const lines = text.split('\n').map(l => l.trim()).filter(l => l.length > 1);
-            if (lines.length > 0) {
-                // 邏輯：排除包含 "WC" 或符合 ID 格式的行，剩下的第一行視為名稱
-                const potentialName = lines.find(l => !/[Ww][Cc]/.test(l) && !/^[A-Z0-9]{8,11}$/.test(l));
-                if (potentialName) {
-                    // 清理一些常見 OCR 雜訊 (例如 : | [ ] 等)
-                    const cleanedName = potentialName.replace(/[:|\[\]]+/g, '').trim();
-                    document.getElementById('keyword').value = cleanedName;
-                }
+                updateStatus("❌ 辨識失敗", "red");
             }
         }
 
         // --- GitHub 上架邏輯 ---
-        
         function updateStatus(msg, color) {
             status.innerText = msg;
             status.style.color = color;
@@ -176,39 +147,25 @@
                 img: document.getElementById('img').value
             };
 
-            if (!token || !newItem.id || !newItem.img) return alert("請填寫 Token, ID 與圖片網址");
+            if (!token || !newItem.id || !newItem.img) return alert("請檢查 ID 與網址是否已填入");
 
             localStorage.setItem('msw_github_token', token);
             btn.disabled = true;
-            updateStatus("⏳ 正在上傳至 GitHub...", "blue");
+            updateStatus("⏳ 正在上傳...", "blue");
 
             try {
-                const owner = "xmasakix"; 
-                const repo = "MSW-ID";
-                const path = "data.json";
-
-                // 使用 Bearer 格式並加入防快取 timestamp
-                const res = await fetch(`https://api.github.com/repos/${owner}/${repo}/contents/${path}?t=${Date.now()}`, {
+                const res = await fetch(`https://api.github.com/repos/xmasakix/MSW-ID/contents/data.json?t=${Date.now()}`, {
                     headers: { "Authorization": `Bearer ${token}`, "Accept": "application/vnd.github.v3+json" }
                 });
-
-                if (!res.ok) throw new Error(`讀取失敗 (${res.status})`);
-
                 const fileData = await res.json();
                 const content = JSON.parse(UTF8.decode(fileData.content));
-                
-                // 防重複檢查：檢查 ID 是否已存在
-                if (content.some(item => item.id === newItem.id)) {
-                    if(!confirm("⚠️ 偵測到重複的商品 ID，確定要重複上架嗎？")) throw new Error("使用者取消上架");
-                }
-
                 content.push(newItem);
 
-                const updateRes = await fetch(`https://api.github.com/repos/${owner}/${repo}/contents/${path}`, {
+                const updateRes = await fetch(`https://api.github.com/repos/xmasakix/MSW-ID/contents/data.json`, {
                     method: "PUT",
                     headers: { "Authorization": `Bearer ${token}`, "Content-Type": "application/json" },
                     body: JSON.stringify({
-                        message: `Add: ${newItem.keyword} (${newItem.id})`,
+                        message: `Add: ${newItem.keyword}`,
                         content: UTF8.encode(JSON.stringify(content, null, 2)),
                         sha: fileData.sha
                     })
@@ -216,17 +173,10 @@
 
                 if (updateRes.ok) {
                     updateStatus("✅ 上架成功！", "green");
-                    // 清空 OCR 辨識的格子，圖片網址保留供對照
                     ["keyword", "wc", "id"].forEach(id => document.getElementById(id).value = "");
-                } else {
-                    const errDetail = await updateRes.json();
-                    throw new Error(`上傳失敗: ${errDetail.message}`);
-                }
-            } catch (e) {
-                updateStatus("❌ 失敗: " + e.message, "red");
-            } finally {
-                btn.disabled = false;
-            }
+                } else { throw new Error("GitHub 更新失敗"); }
+            } catch (e) { updateStatus("❌ 失敗: " + e.message, "red"); }
+            finally { btn.disabled = false; }
         }
     </script>
 </body>
