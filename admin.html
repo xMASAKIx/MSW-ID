@@ -2,182 +2,137 @@
 <html lang="zh-TW">
 <head>
     <meta charset="UTF-8">
-    <title>MSW 後台 (精準辨識版)</title>
-    <script src="https://cdn.jsdelivr.net/npm/tesseract.js@5/dist/tesseract.min.js"></script>
+    <title>MSW 上架助手 - 帳號管理版</title>
     <style>
-        body { font-family: 'Segoe UI', system-ui, sans-serif; padding: 20px; background: #f0f2f5; display: flex; justify-content: center; }
-        .box { background: white; padding: 30px; border-radius: 12px; box-shadow: 0 8px 24px rgba(0,0,0,0.1); width: 100%; max-width: 420px; }
-        h2 { text-align: center; color: #1a1d23; margin-bottom: 20px; }
+        body { font-family: sans-serif; background: #f4f7f9; padding: 20px; display: flex; gap: 20px; justify-content: center; }
+        .main-box { background: white; padding: 25px; border-radius: 12px; box-shadow: 0 4px 15px rgba(0,0,0,0.1); width: 400px; }
+        .account-box { background: #fff; padding: 20px; border-radius: 12px; box-shadow: 0 4px 15px rgba(0,0,0,0.1); width: 250px; }
         
-        .ocr-zone { 
-            background: #f8fafc; border: 2px dashed #cbd5e1; border-radius: 8px; 
-            padding: 20px; text-align: center; margin-bottom: 20px; cursor: pointer;
-            transition: all 0.2s; color: #64748b; font-size: 14px;
-        }
-        .ocr-zone:hover { border-color: #5865F2; background: #f1f5f9; color: #5865F2; }
-        .ocr-loading { display: none; margin-bottom: 15px; color: #5865F2; font-weight: bold; font-size: 13px; text-align: center;}
+        h3 { margin-top: 0; color: #333; border-bottom: 2px solid #eee; padding-bottom: 10px; }
+        label { display: block; font-size: 12px; color: #666; margin-top: 10px; font-weight: bold; }
+        input { width: 100%; padding: 10px; margin-top: 5px; border: 1px solid #ddd; border-radius: 6px; box-sizing: border-box; }
         
-        label { font-size: 12px; color: #666; font-weight: bold; }
-        .tag-clipboard { display: inline-block; background: #e9ecef; color: #495057; font-size: 10px; padding: 2px 5px; border-radius: 4px; margin-left: 5px; }
-        .tag-ocr { display: inline-block; background: #d1e7dd; color: #0f5132; font-size: 10px; padding: 2px 5px; border-radius: 4px; margin-left: 5px; }
+        .acc-item { background: #f8f9fa; padding: 10px; margin-bottom: 8px; border-radius: 6px; cursor: pointer; font-size: 13px; border: 1px solid transparent; transition: 0.2s; }
+        .acc-item:hover { border-color: #5865F2; background: #f0f2ff; }
+        .acc-item.active { background: #eef2ff; border-color: #5865F2; font-weight: bold; }
 
-        input { width: 100%; margin: 8px 0 15px 0; padding: 12px; border: 1px solid #dcdfe6; border-radius: 8px; box-sizing: border-box; }
-        button { width: 100%; padding: 14px; background: #5865F2; color: white; border: none; border-radius: 8px; cursor: pointer; font-weight: bold; font-size: 16px; }
-        button:disabled { background: #99aab5; }
-        #status { text-align: center; margin-top: 20px; font-size: 14px; min-height: 40px; white-space: pre-wrap; line-height: 1.5; }
+        button { width: 100%; padding: 12px; background: #5865F2; color: white; border: none; border-radius: 6px; cursor: pointer; margin-top: 15px; font-weight: bold; }
+        button:hover { background: #4752c4; }
+        .btn-query { background: #4a5568; margin-top: 10px; }
     </style>
 </head>
 <body>
-    <div class="box">
-        <h2>📦 MSW 快速上架</h2>
-        
-        <div class="ocr-zone" id="drop-zone">
-            📷 點擊此處後「貼上截圖 (Ctrl+V)」<br>
-            僅辨識：<strong>名稱、價格</strong>
-        </div>
-        <div id="ocr-progress" class="ocr-loading">⌛ 辨識中... <span id="percent">0%</span></div>
 
-        <label>GitHub Token</label>
-        <input type="password" id="token" placeholder="Token 已自動記憶">
+    <div class="account-box">
+        <h3>👥 已存帳號</h3>
+        <div id="account-list">
+            </div>
+        <button onclick="saveCurrentToList()" style="background: #28a745; font-size: 12px;">💾 保存當前 Token</button>
+    </div>
+
+    <div class="main-box">
+        <h3>📦 商品上架</h3>
         
-        <label>商品名稱 (keyword) <span class="tag-ocr">OCR</span></label>
-        <input type="text" id="keyword" placeholder="等待辨識...">
+        <label>MSW ACCESS TOKEN</label>
+        <input type="password" id="msw_token" onchange="updateActiveStatus()">
         
-        <label>價格 (wc) <span class="tag-ocr">OCR</span></label>
-        <input type="text" id="wc" placeholder="例如：143wc">
-        
-        <label>商品 ID (id) <span class="tag-clipboard">剪貼簿自動</span></label>
-        <input type="text" id="id" placeholder="自動抓取 9 位英數 ID">
-        
-        <label>圖片網址 (img) <span class="tag-clipboard">剪貼簿自動</span></label>
-        <input type="text" id="img" placeholder="自動抓取 https://...">
-        
-        <button id="btn" onclick="updateGitHub()">🚀 立即上架</button>
-        <div id="status"></div>
+        <label>MSW USER ID</label>
+        <input type="text" id="msw_uid" onchange="updateActiveStatus()">
+
+        <hr>
+
+        <label>商品 ID</label>
+        <input type="text" id="id" placeholder="輸入 ID 後點查詢">
+        <button class="btn-query" onclick="fetchFromNexon()">🔍 查詢詳情 (模擬 Godot 邏輯)</button>
+
+        <label>名稱 / 價格</label>
+        <div style="display: flex; gap: 10px;">
+            <input type="text" id="keyword" placeholder="名稱">
+            <input type="text" id="wc" placeholder="價格" style="width: 100px;">
+        </div>
+
+        <label>圖片網址</label>
+        <input type="text" id="img">
+
+        <button onclick="uploadToGithub()">🚀 立即上架</button>
+        <div id="status" style="text-align:center; margin-top:10px; font-size:12px;"></div>
     </div>
 
     <script>
-        const status = document.getElementById('status');
-        const ocrProgress = document.getElementById('ocr-progress');
-        const percentText = document.getElementById('percent');
+        let accounts = JSON.parse(localStorage.getItem('msw_accounts') || '[]');
 
         window.onload = () => {
-            const savedToken = localStorage.getItem('msw_github_token');
-            if (savedToken) document.getElementById('token').value = savedToken;
-            window.addEventListener('focus', autoClipboardSync);
+            renderAccounts();
+            // 自動載入最後一次使用的帳號
+            const lastUid = localStorage.getItem('current_uid');
+            if (lastUid) switchAccount(lastUid);
         };
 
-        // --- 自動同步剪貼簿 (ID 與 網址) ---
-        async function autoClipboardSync() {
-            try {
-                const text = await navigator.clipboard.readText();
-                if (!text) return;
-
-                // 1. 匹配 ID (精準匹配 9 位大寫英數，避免抓到網址片段)
-                const idMatch = text.match(/\b[A-Z0-9]{9}\b/);
-                // 2. 匹配 Nexon 圖片連結
-                const imgMatch = text.match(/https:\/\/mod-file\.dn\.nexoncdn\.co\.kr\/[^\s]+/);
-                
-                let updated = false;
-                if (idMatch && document.getElementById('id').value !== idMatch[0]) {
-                    document.getElementById('id').value = idMatch[0];
-                    updated = true;
-                }
-                if (imgMatch && document.getElementById('img').value !== imgMatch[0]) {
-                    document.getElementById('img').value = imgMatch[0];
-                    updated = true;
-                }
-
-                if (updated) updateStatus("📋 已同步剪貼簿 ID/網址", "#5865F2");
-            } catch (e) { console.log("Clipboard focus check failed"); }
+        function renderAccounts() {
+            const list = document.getElementById('account-list');
+            list.innerHTML = accounts.length ? '' : '<p style="color:#999; font-size:12px;">尚無保存帳號</p>';
+            accounts.forEach(acc => {
+                const div = document.createElement('div');
+                div.className = 'acc-item' + (acc.uid === document.getElementById('msw_uid').value ? ' active' : '');
+                div.innerHTML = `👤 ${acc.name}<br><small style="color:#999">${acc.uid.substring(0,12)}...</small>`;
+                div.onclick = () => switchAccount(acc.uid);
+                list.appendChild(div);
+            });
         }
 
-        // --- OCR 辨識 (僅限名稱與價格) ---
-        document.addEventListener('paste', async (e) => {
-            const items = e.clipboardData.items;
-            for (let i = 0; i < items.length; i++) {
-                if (items[i].type.indexOf('image') !== -1) {
-                    runOCR(items[i].getAsFile());
-                }
-            }
-        });
+        function saveCurrentToList() {
+            const token = document.getElementById('msw_token').value;
+            const uid = document.getElementById('msw_uid').value;
+            if (!token || !uid) return alert("請先填寫 Token 和 UID");
 
-        async function runOCR(blob) {
-            ocrProgress.style.display = 'block';
-            try {
-                const worker = await Tesseract.createWorker('eng+chi_tra'); // 如有名稱是韓文可改為 kor
-                const { data: { text } } = await worker.recognize(blob);
-                
-                // 解析價格
-                const priceMatch = text.match(/(\d+)\s*[Ww][Cc]/);
-                if (priceMatch) document.getElementById('wc').value = priceMatch[1] + "wc";
-                
-                // 解析名稱 (排除價格行，取最長或第一行)
-                const lines = text.split('\n').map(l => l.trim()).filter(l => l.length > 1);
-                const nameCandidate = lines.find(l => !/[Ww][Cc]/.test(l));
-                if (nameCandidate) document.getElementById('keyword').value = nameCandidate.replace(/[:|\[\]]+/g, '').trim();
+            const nickname = prompt("請輸入帳號暱稱:", "帳號 " + uid.substring(uid.length - 4));
+            if (!nickname) return;
 
-                await worker.terminate();
-                ocrProgress.style.display = 'none';
-                updateStatus("✨ 截圖辨識成功 (名稱/價格)", "green");
-            } catch (err) {
-                ocrProgress.style.display = 'none';
-                updateStatus("❌ 辨識失敗", "red");
+            // 移除重複的 UID
+            accounts = accounts.filter(a => a.uid !== uid);
+            accounts.push({ name: nickname, token: token, uid: uid });
+            
+            localStorage.setItem('msw_accounts', JSON.stringify(accounts));
+            renderAccounts();
+        }
+
+        function switchAccount(uid) {
+            const acc = accounts.find(a => a.uid === uid);
+            if (acc) {
+                document.getElementById('msw_token').value = acc.token;
+                document.getElementById('msw_uid').value = acc.uid;
+                localStorage.setItem('current_uid', uid);
+                renderAccounts();
             }
         }
 
-        // --- GitHub 上架邏輯 ---
-        function updateStatus(msg, color) {
-            status.innerText = msg;
-            status.style.color = color;
-        }
+        async function fetchFromNexon() {
+            const itemId = document.getElementById('id').value;
+            const token = document.getElementById('msw_token').value;
+            const uid = document.getElementById('msw_uid').value;
+            const status = document.getElementById('status');
 
-        const UTF8 = {
-            encode(s) { return btoa(unescape(encodeURIComponent(s))); },
-            decode(s) { return decodeURIComponent(escape(atob(s))); }
-        };
-
-        async function updateGitHub() {
-            const token = document.getElementById('token').value;
-            const btn = document.getElementById('btn');
-            const newItem = {
-                keyword: document.getElementById('keyword').value,
-                wc: document.getElementById('wc').value,
-                id: document.getElementById('id').value,
-                img: document.getElementById('img').value
-            };
-
-            if (!token || !newItem.id || !newItem.img) return alert("請檢查 ID 與網址是否已填入");
-
-            localStorage.setItem('msw_github_token', token);
-            btn.disabled = true;
-            updateStatus("⏳ 正在上傳...", "blue");
-
+            status.innerText = "⏳ 抓取中...";
+            
             try {
-                const res = await fetch(`https://api.github.com/repos/xmasakix/MSW-ID/contents/data.json?t=${Date.now()}`, {
-                    headers: { "Authorization": `Bearer ${token}`, "Accept": "application/vnd.github.v3+json" }
+                // 這邊就是你 Godot 中的 HTTPRequest 邏輯
+                const res = await fetch(`https://mod-gateway-prd-tokyo-2.nexon.com/mod/v1/avatar/shop/v2/items/${itemId}`, {
+                    headers: { "mod-accesstoken": token, "mod-user-id": uid }
                 });
-                const fileData = await res.json();
-                const content = JSON.parse(UTF8.decode(fileData.content));
-                content.push(newItem);
+                const data = await res.json();
+                const item = data.item || data;
 
-                const updateRes = await fetch(`https://api.github.com/repos/xmasakix/MSW-ID/contents/data.json`, {
-                    method: "PUT",
-                    headers: { "Authorization": `Bearer ${token}`, "Content-Type": "application/json" },
-                    body: JSON.stringify({
-                        message: `Add: ${newItem.keyword}`,
-                        content: UTF8.encode(JSON.stringify(content, null, 2)),
-                        sha: fileData.sha
-                    })
-                });
-
-                if (updateRes.ok) {
-                    updateStatus("✅ 上架成功！", "green");
-                    ["keyword", "wc", "id"].forEach(id => document.getElementById(id).value = "");
-                } else { throw new Error("GitHub 更新失敗"); }
-            } catch (e) { updateStatus("❌ 失敗: " + e.message, "red"); }
-            finally { btn.disabled = false; }
+                document.getElementById('keyword').value = item.itemName || "";
+                document.getElementById('wc').value = (item.itemPrice || 0) + "wc";
+                document.getElementById('img').value = item.itemImageUrl || "";
+                
+                status.innerText = "✅ 抓取成功！";
+            } catch (e) {
+                status.innerText = "❌ 失敗，請確認 Token 或 CORS 插件是否開啟";
+            }
         }
+
+        function updateActiveStatus() { renderAccounts(); }
     </script>
 </body>
 </html>
