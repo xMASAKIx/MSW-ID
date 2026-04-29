@@ -2,122 +2,84 @@
 <html lang="zh-TW">
 <head>
     <meta charset="UTF-8">
-    <title>MSW 後台 (完全自動化版)</title>
+    <title>MSW 後台 (穩定增強版)</title>
     <style>
-        body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; padding: 20px; background: #f0f2f5; display: flex; justify-content: center; align-items: flex-start; min-height: 100vh; }
+        body { font-family: 'Segoe UI', system-ui, sans-serif; padding: 20px; background: #f0f2f5; display: flex; justify-content: center; }
         .box { background: white; padding: 30px; border-radius: 12px; box-shadow: 0 8px 24px rgba(0,0,0,0.1); width: 100%; max-width: 420px; }
-        h2 { text-align: center; color: #1a1d23; margin-top: 0; margin-bottom: 25px; font-size: 24px; }
-        .hint { background: #eef2ff; border-left: 4px solid #5865F2; padding: 12px; margin-bottom: 20px; font-size: 13px; color: #444; line-height: 1.4; }
-        label { font-size: 12px; color: #666; font-weight: bold; text-transform: uppercase; letter-spacing: 0.5px; }
-        input { width: 100%; margin: 8px 0 18px 0; padding: 12px; border: 1px solid #dcdfe6; border-radius: 8px; box-sizing: border-box; transition: border-color 0.2s; font-size: 14px; }
-        input:focus { outline: none; border-color: #5865F2; box-shadow: 0 0 0 2px rgba(88,101,242,0.1); }
-        button { width: 100%; padding: 14px; background: #5865F2; color: white; border: none; border-radius: 8px; cursor: pointer; font-weight: bold; font-size: 16px; transition: background 0.2s, transform 0.1s; }
-        button:hover { background: #4752c4; }
-        button:active { transform: scale(0.98); }
-        button:disabled { background: #99aab5; cursor: not-allowed; transform: none; }
-        #status { text-align: center; margin-top: 20px; font-size: 14px; min-height: 40px; white-space: pre-wrap; line-height: 1.6; }
-        .auto-tag { display: inline-block; background: #43b581; color: white; font-size: 10px; padding: 2px 6px; border-radius: 4px; margin-left: 8px; vertical-align: middle; }
+        h2 { text-align: center; color: #1a1d23; margin-bottom: 25px; }
+        .hint { background: #eef2ff; border-left: 4px solid #5865F2; padding: 12px; margin-bottom: 20px; font-size: 13px; color: #444; }
+        label { font-size: 12px; color: #666; font-weight: bold; }
+        input { width: 100%; margin: 8px 0 18px 0; padding: 12px; border: 1px solid #dcdfe6; border-radius: 8px; box-sizing: border-box; }
+        button { width: 100%; padding: 14px; background: #5865F2; color: white; border: none; border-radius: 8px; cursor: pointer; font-weight: bold; font-size: 16px; }
+        button:disabled { background: #99aab5; }
+        #status { text-align: center; margin-top: 20px; font-size: 14px; min-height: 40px; white-space: pre-wrap; }
     </style>
 </head>
 <body>
     <div class="box">
         <h2>📦 MSW 快速上架</h2>
-        
-        <div class="hint">
-            <strong>💡 自動化小撇步：</strong><br>
-            在別的分頁複製好資料後，直接<strong>切換回此分頁</strong>，格子就會自動填好！
-        </div>
+        <div class="hint">複製資料後切換回本頁，系統將自動填入。</div>
 
-        <label>GitHub Token <span class="auto-tag">自動記憶</span></label>
-        <input type="password" id="token" placeholder="貼上一次後即自動記錄">
+        <label>GitHub Token</label>
+        <input type="password" id="token" placeholder="貼上 Token">
         
         <label>商品名稱 (keyword)</label>
-        <input type="text" id="keyword" placeholder="例如：희진 미스티 뚝">
+        <input type="text" id="keyword" placeholder="自動填入或手動輸入">
         
         <label>價格 (wc)</label>
-        <input type="text" id="wc" placeholder="例如：10wc">
+        <input type="text" id="wc" placeholder="自動填入">
         
         <label>商品 ID (id)</label>
-        <input type="text" id="id" placeholder="例如：LHL7I9OTM">
+        <input type="text" id="id" placeholder="自動填入">
         
         <label>圖片網址 (img)</label>
-        <input type="text" id="img" placeholder="http://...">
+        <input type="text" id="img" placeholder="自動填入">
         
         <button id="btn" onclick="updateGitHub()">🚀 立即上架</button>
         <div id="status"></div>
     </div>
 
     <script>
-        // 頁面載入邏輯
         window.onload = function() {
             const savedToken = localStorage.getItem('msw_github_token');
-            if (savedToken) {
-                document.getElementById('token').value = savedToken;
-                updateStatus("✅ 已讀取儲存的 Token", "#888");
-            }
-
-            // 【核心功能】偵測頁面聚焦，自動讀取剪貼簿
-            window.addEventListener('focus', () => {
-                console.log("偵測到分頁切換，嘗試自動讀取資料...");
-                autoPasteAndParse();
-            });
+            if (savedToken) document.getElementById('token').value = savedToken;
+            
+            // 監測視窗聚焦自動填入
+            window.addEventListener('focus', autoPaste);
         };
 
-        // 狀態顯示
-        function updateStatus(msg, color) {
-            const s = document.getElementById('status');
-            s.innerText = msg;
-            s.style.color = color;
-        }
-
-        // 自動解析剪貼簿
-        async function autoPasteAndParse() {
+        async function autoPaste() {
             try {
-                // 部分瀏覽器在自動觸發時需要先詢問權限
                 const text = await navigator.clipboard.readText();
-                if (!text || text.trim() === "") return;
-
-                // --- 正規表達式解析 ---
-                const idMatch = text.match(/[A-Z0-9]{8,11}/); // 匹配商品ID
-                const priceMatch = text.match(/(\d+)\s*WC/i); // 匹配價格數字
-                const imgMatch = text.match(/https:\/\/mod-file\.dn\.nexoncdn\.co\.kr\/[^\s]+/); // 匹配Nexon圖片連結
+                const idMatch = text.match(/[A-Z0-9]{8,11}/);
+                const priceMatch = text.match(/(\d+)\s*WC/i);
+                const imgMatch = text.match(/https:\/\/mod-file\.dn\.nexoncdn\.co\.kr\/[^\s]+/);
                 
-                // 處理名稱：嘗試找「商品名稱」後的文字，或取短的第一行
-                let name = "";
-                if (text.includes("商品名稱")) {
-                    name = text.split("商品名稱")[1].split("\n")[0].replace(/[\s:]+/g, '').trim();
-                } else {
-                    const lines = text.split("\n").map(l => l.trim()).filter(l => l.length > 0);
-                    if (lines.length > 0 && lines[0].length < 30) name = lines[0];
-                }
-
-                // 只有當偵測到關鍵資料（ID 或 圖片網址）時才動作，避免誤填普通文字
                 if (idMatch || imgMatch) {
                     if (idMatch) document.getElementById('id').value = idMatch[0];
                     if (priceMatch) document.getElementById('wc').value = priceMatch[1] + "wc";
                     if (imgMatch) document.getElementById('img').value = imgMatch[0];
-                    if (name && name !== "o") document.getElementById('keyword').value = name;
-                    else if (name === "o") document.getElementById('keyword').value = "o";
                     
-                    updateStatus("✨ 偵測到新資料，已自動填入！", "#5865F2");
+                    let name = text.split("\n")[0].trim();
+                    if (text.includes("商品名稱")) name = text.split("商品名稱")[1].split("\n")[0].replace(/[:\s]+/g, '');
+                    document.getElementById('keyword').value = name;
+                    
+                    document.getElementById('status').innerText = "✨ 資料已自動更新";
+                    document.getElementById('status').style.color = "#5865F2";
                 }
-            } catch (err) {
-                console.log("自動讀取剪貼簿受阻 (通常是因為權限或尚未複製內容)");
-            }
+            } catch (e) { console.log("Clipboard access denied"); }
         }
 
-        // UTF8 編碼處理（解決中韓文亂碼）
         const UTF8 = {
             encode(s) { return btoa(unescape(encodeURIComponent(s))); },
             decode(s) { return decodeURIComponent(escape(atob(s))); }
         };
 
-        // 上架到 GitHub
         async function updateGitHub() {
-            const tokenInput = document.getElementById('token');
-            const token = tokenInput.value;
+            const token = document.getElementById('token').value;
             const btn = document.getElementById('btn');
-            
+            const status = document.getElementById('status');
+
             const newItem = {
                 keyword: document.getElementById('keyword').value,
                 wc: document.getElementById('wc').value,
@@ -125,59 +87,61 @@
                 img: document.getElementById('img').value
             };
 
-            if(!token || !newItem.id) return alert("請填寫 Token 與 ID");
+            if (!token || !newItem.id) return alert("請檢查 Token 與 ID 是否填寫");
 
             localStorage.setItem('msw_github_token', token);
-            updateStatus("⏳ 正在處理...", "#5865F2");
             btn.disabled = true;
-
-            const owner = "xmasakix"; 
-            const repo = "MSW-ID";
-            const path = "data.json";
+            status.innerText = "⏳ 正在連線至 GitHub...";
+            status.style.color = "blue";
 
             try {
-                // 1. 取得現有的 data.json
-                const res = await fetch(`https://api.github.com/repos/${owner}/${repo}/contents/${path}`, {
+                const owner = "xmasakix"; 
+                const repo = "MSW-ID";
+                const path = "data.json";
+
+                // 1. 抓取檔案 (增加防快取參數)
+                const res = await fetch(`https://api.github.com/repos/${owner}/${repo}/contents/${path}?t=${Date.now()}`, {
                     headers: { 
-                        "Authorization": `token ${token}`, 
-                        "Accept": "application/vnd.github.v3+json",
-                        "Cache-Control": "no-cache"
+                        "Authorization": `Bearer ${token}`, // 使用 Bearer 格式更穩定
+                        "Accept": "application/vnd.github.v3+json"
                     }
                 });
 
-                if (res.status === 401) throw new Error("Token 錯誤或已過期");
-                if (!res.ok) throw new Error(`無法讀取檔案 (${res.status})`);
+                if (!res.ok) {
+                    const errorDetail = await res.json();
+                    throw new Error(`GitHub 錯誤: ${errorDetail.message || res.status}`);
+                }
 
                 const fileData = await res.json();
                 const content = JSON.parse(UTF8.decode(fileData.content));
-                
-                // 2. 加入新資料
                 content.push(newItem);
 
-                // 3. 回傳更新
+                // 2. 更新檔案
                 const updateRes = await fetch(`https://api.github.com/repos/${owner}/${repo}/contents/${path}`, {
                     method: "PUT",
                     headers: { 
-                        "Authorization": `token ${token}`, 
+                        "Authorization": `Bearer ${token}`,
                         "Content-Type": "application/json" 
                     },
                     body: JSON.stringify({
-                        message: `Add: ${newItem.keyword} (${newItem.id})`,
+                        message: `Add: ${newItem.keyword}`,
                         content: UTF8.encode(JSON.stringify(content, null, 2)),
                         sha: fileData.sha
                     })
                 });
 
-                if(updateRes.ok) {
-                    updateStatus("✅ 上架成功！\n請檢查 Discord 通知", "green");
-                    // 清空輸入框（保留 Token）
+                if (updateRes.ok) {
+                    status.innerText = "✅ 上架完成！";
+                    status.style.color = "green";
                     ["keyword", "wc", "id", "img"].forEach(id => document.getElementById(id).value = "");
                 } else {
                     const errJson = await updateRes.json();
                     throw new Error(errJson.message);
                 }
-            } catch (e) { 
-                updateStatus("❌ " + e.message, "red");
+            } catch (e) {
+                status.innerText = "❌ 失敗: " + e.message;
+                status.style.color = "red";
+                console.error(e);
             } finally {
                 btn.disabled = false;
             }
