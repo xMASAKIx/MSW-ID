@@ -1,80 +1,155 @@
-async function startAutoFetch() {
-	const ppsn = document.getElementById('target_ppsn').value.trim();
-	const status = document.getElementById('status');
-	const grid = document.getElementById('item_grid');
-	
-	// 從 localStorage 讀取 Token，確保這是在之前的登入流程中存入的
-	const token = localStorage.getItem('msw_token');
-	const uid = localStorage.getItem('msw_uid');
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+	<meta charset="UTF-8">
+	<title>MSW Admin Panel</title>
+	<style>
+		body { font-family: 'Segoe UI', sans-serif; background: #0f0f12; color: #e0e0e0; display: flex; flex-direction: column; align-items: center; padding: 40px; }
+		.container { width: 100%; max-width: 1000px; }
+		.config-card { background: #1a1a1d; padding: 25px; border-radius: 12px; border: 1px solid #333; margin-bottom: 20px; }
+		h2 { margin: 0 0 15px 0; font-size: 18px; color: #fff; }
+		.input-group { display: flex; gap: 10px; margin-bottom: 10px; }
+		input { flex: 1; padding: 12px; border: 1px solid #333; border-radius: 8px; background: #252529; color: #fff; outline: none; }
+		button { padding: 10px 20px; border: none; border-radius: 8px; cursor: pointer; font-weight: bold; transition: 0.3s; }
+		.btn-fetch { background: #4e5d6e; color: white; }
+		#item_grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(320px, 1fr)); gap: 20px; }
+		.item-card { background: #1a1a1d; border-radius: 12px; border: 1px solid #333; overflow: hidden; display: flex; flex-direction: column; }
+		.img-container { background: #0a0a0c; height: 180px; display: flex; align-items: center; justify-content: center; padding: 10px; }
+		.img-container img { max-width: 100%; max-height: 100%; object-fit: contain; }
+		.info-container { padding: 20px; flex-grow: 1; }
+		.price-text { color: #43b581; font-size: 24px; font-weight: bold; margin-bottom: 15px; }
+		.info-row { display: flex; align-items: center; margin-bottom: 10px; font-size: 13px; color: #b0b0b0; }
+		.info-row span.label { width: 85px; color: #888; }
+		.info-row b { color: #fff; margin-left: 5px; font-family: 'Consolas', monospace; }
+		.btn-sync { background: #5865f2; color: white; border: none; padding: 14px; width: 100%; border-radius: 0 0 12px 12px; cursor: pointer; font-weight: bold; }
+		#status { margin-top: 10px; font-size: 12px; color: #888; }
+	</style>
+</head>
+<body>
 
-	if (!ppsn || !token) {
-		status.innerHTML = "❌ 錯誤：請確保已填寫 PPSN 並檢查 Token 是否已儲存。";
-		return;
-	}
+<div class="container">
+	<div class="config-card">
+		<h2>👤 查詢設定 (自動獲取作者)</h2>
+		<div class="input-group">
+			<input type="text" id="target_ppsn" placeholder="輸入目標 PPSN (例如: 20372100006053110)">
+			<button class="btn-fetch" onclick="startAutoFetch()">開始自動抓取</button>
+		</div>
+		<div id="status"></div>
+	</div>
 
-	status.innerHTML = "⏳ 正在嘗試獲取作者與裝備資訊...";
-	grid.innerHTML = "";
+	<div id="item_grid"></div>
+</div>
 
-	try {
-		// 1. 二次查詢：嘗試獲取作者暱稱
-		const profileApi = `https://mod-gateway-prd-tokyo-2.nexon.com/mod/v1/friends/search/ppsn?ppsn=${ppsn}`;
-		const profileRes = await fetch(`https://corsproxy.io/?${encodeURIComponent(profileApi)}`, {
-			headers: { 
-				"mod-accesstoken": token, 
-				"mod-user-id": uid 
-			}
-		});
-		
-		const profileJson = await profileRes.json();
-		
-		// 根據日誌結構解析：data -> result -> [0] -> profileName
-		let authorName = "未知作者";
-		if (profileJson.data && profileJson.data.result && profileJson.data.result.length > 0) {
-			authorName = profileJson.data.result[0].profileName;
-		} else {
-			// 如果 API 沒回傳名字，至少顯示 PPSN 的後五碼作為識別
-			authorName = `User_${ppsn.slice(-5)}`;
-		}
+<script>
+	const GITHUB_CONFIG = {
+		token: "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",
+		owner: "xmasakix",
+		repo: "MSW-ID",
+		path: "data.json"
+	};
 
-		// 2. 獲取裝備清單
-		const equipApi = `https://mod-gateway-prd-tokyo-2.nexon.com/mverse/v1/shop/mod/inventory/avatars/manage/equip/list/${ppsn}`;
-		const equipRes = await fetch(`https://corsproxy.io/?${encodeURIComponent(equipApi)}`, {
-			headers: { 
-				"mod-accesstoken": token, 
-				"mod-user-id": uid 
-			}
-		});
-		
-		const equipJson = await equipRes.json();
-		const items = equipJson.data?.items || [];
+	async function startAutoFetch() {
+		const ppsn = document.getElementById('target_ppsn').value.trim();
+		const status = document.getElementById('status');
+		const grid = document.getElementById('item_grid');
+		const token = localStorage.getItem('msw_token');
+		const uid = localStorage.getItem('msw_uid');
 
-		if (items.length === 0) {
-			status.innerHTML = `⚠️ [${authorName}] 目前沒有穿戴任何裝備或資料不公開。`;
+		if (!ppsn || !token) {
+			status.innerHTML = "❌ 錯誤：請確認 PPSN 已填寫，並確認 Token 已存於 localStorage。";
 			return;
 		}
 
-		// 3. 渲染卡片 (保持 Tab 縮排與圖片樣式)
-		items.forEach(item => {
-			const card = document.createElement('div');
-			card.className = 'item-card';
-			card.innerHTML = `
-				<div class="img-container"><img src="${item.itemThumbnailUrl}" onerror="this.src='https://via.placeholder.com/150?text=No+Image'"></div>
-				<div class="info-container">
-					<div class="info-row"><span class="label">📝 商品名稱</span> <b>${item.itemName}</b></div>
-					<div class="price-text">10 <span style="font-size:12px; color:#888">wc</span></div>
-					<div class="info-row"><span class="label">👤 作者</span> <b>${authorName}</b></div>
-					<div class="info-row"><span class="label">🆔 商品 ID</span> <b>${item.itemId}</b></div>
-					<div class="info-row"><span class="label">📦 部位</span> <b>${item.avatarType || 'EQUIP'}</b></div>
-				</div>
-				<button class="btn-sync" onclick="syncItem('${item.itemId}', '${item.itemName}', '${item.itemThumbnailUrl}')">🚀 同步至 GitHub</button>
-			`;
-			grid.appendChild(card);
-		});
+		status.innerHTML = "⏳ 正在嘗試獲取作者與裝備資訊...";
+		grid.innerHTML = "";
 
-		status.innerHTML = `✅ 成功載入作者 [${authorName}] 的 ${items.length} 個裝備`;
+		try {
+			// 1. 二次查詢：獲取作者暱稱
+			const profileApi = `https://mod-gateway-prd-tokyo-2.nexon.com/mod/v1/friends/search/ppsn?ppsn=${ppsn}`;
+			const profileRes = await fetch(`https://corsproxy.io/?${encodeURIComponent(profileApi)}`, {
+				headers: { "mod-accesstoken": token, "mod-user-id": uid }
+			});
+			const profileJson = await profileRes.json();
+			
+			let authorName = "未知作者";
+			if (profileJson.data && profileJson.data.result && profileJson.data.result.length > 0) {
+				authorName = profileJson.data.result[0].profileName;
+			} else {
+				authorName = `User_${ppsn.slice(-5)}`;
+			}
 
-	} catch (err) {
-		console.error("Fetch Error:", err);
-		status.innerHTML = `<span style="color:#ff4d4d">❌ 查詢失敗：可能是 Token 過期或網路錯誤。</span>`;
+			// 2. 獲取裝備清單
+			const equipApi = `https://mod-gateway-prd-tokyo-2.nexon.com/mverse/v1/shop/mod/inventory/avatars/manage/equip/list/${ppsn}`;
+			const equipRes = await fetch(`https://corsproxy.io/?${encodeURIComponent(equipApi)}`, {
+				headers: { "mod-accesstoken": token, "mod-user-id": uid }
+			});
+			const equipJson = await equipRes.json();
+			const items = equipJson.data?.items || [];
+
+			if (items.length === 0) {
+				status.innerHTML = `⚠️ [${authorName}] 目前沒有穿戴裝備。`;
+				return;
+			}
+
+			// 3. 渲染卡片
+			items.forEach(item => {
+				const card = document.createElement('div');
+				card.className = 'item-card';
+				card.innerHTML = `
+					<div class="img-container"><img src="${item.itemThumbnailUrl}"></div>
+					<div class="info-container">
+						<div class="info-row"><span class="label">📝 商品名稱</span> <b>${item.itemName}</b></div>
+						<div class="price-text">10 <span style="font-size:12px; color:#888">wc</span></div>
+						<div class="info-row"><span class="label">👤 作者</span> <b>${authorName}</b></div>
+						<div class="info-row"><span class="label">🆔 商品 ID</span> <b>${item.itemId}</b></div>
+						<div class="info-row"><span class="label">📦 部位</span> <b>${item.avatarType || 'EQUIP'}</b></div>
+					</div>
+					<button class="btn-sync" onclick="syncItem('${item.itemId}', '${item.itemName}', '${item.itemThumbnailUrl}')">🚀 同步至 GitHub</button>
+				`;
+				grid.appendChild(card);
+			});
+
+			status.innerHTML = `✅ 成功載入作者 [${authorName}] 的 ${items.length} 個項目`;
+
+		} catch (err) {
+			status.innerHTML = `<span style="color:#ff4d4d">❌ 查詢失敗，請檢查網路或 Token。</span>`;
+		}
 	}
-}
+
+	async function syncItem(id, name, img) {
+		const payload = {
+			keyword: name.replace(/\n|\r/g, "").trim(),
+			wc: "10wc",
+			id: id,
+			img: img
+		};
+
+		try {
+			const url = `https://api.github.com/repos/${GITHUB_CONFIG.owner}/${GITHUB_CONFIG.repo}/contents/${GITHUB_CONFIG.path}`;
+			const getRes = await fetch(url, { headers: { "Authorization": `token ${GITHUB_CONFIG.token}` } });
+			let sha = "", list = [];
+
+			if (getRes.ok) {
+				const file = await getRes.json();
+				sha = file.sha;
+				list = JSON.parse(decodeURIComponent(escape(atob(file.content))));
+			}
+
+			const idx = list.findIndex(i => i.id === payload.id);
+			if (idx > -1) list[idx] = payload; else list.push(payload);
+
+			const content = btoa(unescape(encodeURIComponent(JSON.stringify(list, null, "\t"))));
+			const putRes = await fetch(url, {
+				method: "PUT",
+				headers: { "Authorization": `token ${GITHUB_CONFIG.token}`, "Content-Type": "application/json" },
+				body: JSON.stringify({ message: `📦 Sync: ${payload.keyword}`, content: content, sha: sha })
+			});
+
+			if (putRes.ok) alert(`🎉 [${payload.keyword}] 同步成功！`);
+		} catch (err) {
+			alert("同步失敗: " + err.message);
+		}
+	}
+</script>
+</body>
+</html>
