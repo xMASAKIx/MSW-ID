@@ -1,27 +1,80 @@
-async function startFilteredFetch() {
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+	<meta charset="UTF-8">
+	<title>MSW 全伺服器裝備搜尋器</title>
+	<style>
+		body { font-family: 'Segoe UI', sans-serif; background: #0f0f12; color: #e0e0e0; display: flex; flex-direction: column; align-items: center; padding: 40px; }
+		.container { width: 100%; max-width: 1000px; }
+		.config-card { background: #1a1a1d; padding: 25px; border-radius: 12px; border: 1px solid #333; margin-bottom: 20px; }
+		.input-group { display: flex; gap: 10px; margin-bottom: 10px; }
+		input { flex: 1; padding: 12px; border: 1px solid #333; border-radius: 8px; background: #252529; color: #fff; outline: none; }
+		button { padding: 10px 20px; border: none; border-radius: 8px; cursor: pointer; font-weight: bold; background: #4e5d6e; color: white; }
+		#item_grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(320px, 1fr)); gap: 20px; }
+		.item-card { background: #1a1a1d; border-radius: 12px; border: 1px solid #333; overflow: hidden; transition: 0.3s; }
+		.item-card:hover { border-color: #5865f2; transform: translateY(-5px); }
+		.img-container { background: #0a0a0c; height: 180px; display: flex; align-items: center; justify-content: center; padding: 10px; }
+		.img-container img { max-width: 100%; max-height: 100%; object-fit: contain; image-rendering: pixelated; }
+		.info-container { padding: 20px; }
+		.price-text { color: #43b581; font-size: 24px; font-weight: bold; margin-bottom: 15px; }
+		.info-row { display: flex; flex-direction: column; margin-bottom: 10px; font-size: 13px; color: #b0b0b0; }
+		.info-row .label { color: #888; margin-bottom: 2px; }
+		.info-row b { color: #fff; font-family: 'Consolas', monospace; word-break: break-all; }
+		.info-row .url-link { color: #5865f2; text-decoration: none; font-size: 11px; margin-top: 2px; word-break: break-all; }
+		.btn-sync { background: #5865f2; color: white; border: none; padding: 14px; width: 100%; border-radius: 0 0 12px 12px; cursor: pointer; font-weight: bold; }
+		#status { margin-top: 10px; font-size: 12px; color: #888; }
+	</style>
+</head>
+<body>
+
+<div class="container">
+	<div class="config-card">
+		<h2 style="margin-top:0; font-size:18px;">🔍 MSW 全伺服器公開裝備搜尋</h2>
+		<div class="input-group">
+			<input type="text" id="target_ppsn" placeholder="輸入目標玩家 PPSN" value="20372100006053110">
+			<button onclick="startGlobalSearch()">開始搜尋公開商品</button>
+		</div>
+		<div id="status">提示：此模式可繞過 401 錯誤搜尋任何玩家的公開商品。</div>
+	</div>
+
+	<div id="item_grid"></div>
+</div>
+
+<script>
+	const GITHUB_CONFIG = {
+		token: "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".trim(),
+		owner: "xmasakix",
+		repo: "MSW-ID",
+		path: "data.json"
+	};
+
+	const ALLOWED_TYPES = {
+		"HAIR": "髮型", "HAT": "帽子", "TOP": "上衣", "OVERALL": "大衣",
+		"BOTTOM": "褲裙", "SHOES": "鞋子", "GLOVE": "手套", "CAPE": "披風"
+	};
+
+	async function startGlobalSearch() {
 		const ppsn = document.getElementById('target_ppsn').value.trim();
 		const status = document.getElementById('status');
 		const grid = document.getElementById('item_grid');
 		const mToken = localStorage.getItem('msw_token');
 
-		if (!ppsn || !mToken) return alert("請確認 PPSN 與 msw_token");
+		if (!ppsn || !mToken) return alert("請確保 localStorage 中的 msw_token 已設定");
 
-		status.innerHTML = "⏳ 正在搜尋該玩家的公開商品...";
+		status.innerHTML = `⏳ 正在搜尋玩家 ${ppsn} 的公開商品...`;
 		grid.innerHTML = "";
 
 		try {
-			// 改用公開商店搜尋端點，而非 manage 端點
+			// 使用公開商店搜尋端點，解決 401 Unauthorized 問題
 			const api = `https://mod-gateway-prd-tokyo-2.nexon.com/mverse/v1/shop/mod/products/search?ppsn=${ppsn}&page=1&size=100`;
-			
 			const res = await fetch(`https://corsproxy.io/?${encodeURIComponent(api)}`, {
 				headers: { "mod-accesstoken": mToken }
 			});
 			
 			const json = await res.json();
-			// 公開搜尋的資料結構略有不同，通常在 data.products 中
-			const products = json.data?.products || [];
+			const products = (json.data && json.data.products) ? json.data.products : [];
 
-			// 過濾出指定部位
+			// 執行部位篩選
 			const filtered = products.filter(p => ALLOWED_TYPES.hasOwnProperty(p.avatarType));
 
 			if (filtered.length === 0) {
@@ -30,6 +83,7 @@ async function startFilteredFetch() {
 			}
 
 			filtered.forEach(item => {
+				const itemId = (item.items && item.items.length > 0) ? item.items[0].itemId : 'N/A';
 				const card = document.createElement('div');
 				card.className = 'item-card';
 				card.innerHTML = `
@@ -37,19 +91,80 @@ async function startFilteredFetch() {
 					<div class="info-container">
 						<div class="price-text">${item.price || 10} <span style="font-size:12px; color:#888">wc</span></div>
 						<div class="info-row"><span class="label">📝 商品名稱</span> <b>${item.productName}</b></div>
-						<div class="info-row"><span class="label">🆔 商品 ID</span> <b>${item.items[0]?.itemId || 'N/A'}</b></div>
+						<div class="info-row"><span class="label">🆔 商品 ID</span> <b>${itemId}</b></div>
 						<div class="info-row">
 							<span class="label">🖼️ 圖片網址</span>
 							<a href="${item.thumbnailUrl}" target="_blank" class="url-link">${item.thumbnailUrl}</a>
 						</div>
 						<div class="info-row"><span class="label">📦 部位</span> <b>${ALLOWED_TYPES[item.avatarType]}</b></div>
 					</div>
-					<button class="btn-sync" onclick="syncItem('${item.items[0]?.itemId}', '${item.productName}', '${item.thumbnailUrl}')">🚀 同步至 GitHub</button>
+					<button class="btn-sync" onclick="syncItem('${itemId}', '${item.productName.replace(/'/g, "")}', '${item.thumbnailUrl}')">🚀 同步至 GitHub</button>
 				`;
 				grid.appendChild(card);
 			});
-			status.innerHTML = `✅ 成功獲取玩家 ${ppsn} 的 ${filtered.length} 件公開商品。`;
+			status.innerHTML = `✅ 搜尋完成，共找到 ${filtered.length} 件指定部位商品。`;
 		} catch (err) {
-			status.innerHTML = "❌ 請求被攔截或 Token 失效";
+			status.innerHTML = "❌ 搜尋失敗，請檢查 Token 是否有效或代理伺服器狀態。";
 		}
 	}
+
+	async function syncItem(id, name, img) {
+		const status = document.getElementById('status');
+		const payload = {
+			keyword: name.trim(),
+			wc: "10wc",
+			id: id,
+			img: img
+		};
+
+		status.innerHTML = `⏳ 正在同步 [${payload.keyword}]...`;
+
+		try {
+			const url = `https://api.github.com/repos/${GITHUB_CONFIG.owner}/${GITHUB_CONFIG.repo}/contents/${GITHUB_CONFIG.path}`;
+			const headers = { 
+				"Authorization": `Bearer ${GITHUB_CONFIG.token}`,
+				"Accept": "application/vnd.github.v3+json",
+				"Content-Type": "application/json"
+			};
+
+			const getRes = await fetch(url, { headers });
+			let sha = "", list = [];
+
+			if (getRes.status === 401) throw new Error("Bad credentials - GitHub Token 驗證失敗");
+			
+			if (getRes.ok) {
+				const file = await getRes.json();
+				sha = file.sha;
+				list = JSON.parse(decodeURIComponent(escape(atob(file.content))));
+			}
+
+			const idx = list.findIndex(i => i.id === payload.id);
+			if (idx > -1) list[idx] = payload; else list.push(payload);
+
+			const content = btoa(unescape(encodeURIComponent(JSON.stringify(list, null, "\t"))));
+			
+			const putRes = await fetch(url, {
+				method: "PUT",
+				headers,
+				body: JSON.stringify({ 
+					message: `📦 Sync Global Search: ${payload.keyword}`, 
+					content: content, 
+					sha: sha 
+				})
+			});
+
+			if (putRes.ok) {
+				status.innerHTML = `✅ [${payload.keyword}] 同步成功！Discord 應會收到通知。`;
+				alert(`🎉 [${payload.keyword}] 已成功寫入資料庫！`);
+			} else {
+				const errData = await putRes.json();
+				throw new Error(errData.message);
+			}
+		} catch (err) {
+			status.innerHTML = `❌ 同步錯誤: ${err.message}`;
+			alert("同步失敗: " + err.message);
+		}
+	}
+</script>
+</body>
+</html>
