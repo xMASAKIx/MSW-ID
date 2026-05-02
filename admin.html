@@ -2,7 +2,7 @@
 <html lang="zh-TW">
 <head>
 	<meta charset="UTF-8">
-	<title>MSW 5-Digit ID Manager</title>
+	<title>MSW Item Manager</title>
 	<style>
 		body { font-family: 'Segoe UI', sans-serif; background: #0f0f12; color: #e0e0e0; display: flex; flex-direction: column; align-items: center; padding: 40px; }
 		.container { width: 100%; max-width: 1000px; }
@@ -28,14 +28,13 @@
 
 <div class="container">
 	<div class="config-card">
-		<h2 style="margin-top:0; font-size:18px;">📦 商品管理系統 (支援 5 碼 ID)</h2>
+		<h2 style="margin-top:0; font-size:18px;">📦 商品管理系統 (5 碼 ID 模式)</h2>
 		<div class="input-group">
-			<input type="text" id="target_id" placeholder="輸入 5 碼 ID (例如: 12345)">
-			<button onclick="handleSearch()">獲取商品</button>
+			<input type="text" id="target_id" placeholder="請輸入賣家的 5 碼 ID">
+			<button onclick="handleSearch()">獲取真實價格</button>
 		</div>
 		<div id="status"></div>
 	</div>
-
 	<div id="item_grid"></div>
 </div>
 
@@ -52,37 +51,38 @@
 		"BOTTOM": "褲裙", "SHOES": "鞋子", "GLOVE": "手套", "CAPE": "披風"
 	};
 
-	// 核心邏輯：處理搜尋
 	async function handleSearch() {
 		const inputId = document.getElementById('target_id').value.trim();
 		const status = document.getElementById('status');
 		const token = localStorage.getItem('msw_token');
 		const uid = localStorage.getItem('msw_uid');
 
-		if (!inputId || !token) return alert("請輸入 ID 並確認 Token 已設定");
+		if (!inputId || !token) return alert("請輸入 5 碼 ID 並確認已設定 Token");
 
-		status.innerHTML = `🔍 正在將 ID ${inputId} 轉換為 PPSN...`;
+		status.innerHTML = `🔍 正在搜尋 ID: ${inputId}...`;
 
 		try {
-			// Step 1: 透過 profile API 換取完整 PPSN
-			const profileApi = `https://mod-gateway-prd-tokyo-2.nexon.com/mverse/v1/friends/search/profile?profileCode=${inputId}`;
-			const profileRes = await fetch(`https://corsproxy.io/?${encodeURIComponent(profileApi)}`, {
+			// 修改為更精準的搜尋 API 路徑
+			const searchUrl = `https://mod-gateway-prd-tokyo-2.nexon.com/mverse/v1/friends/search?query=${inputId}&page=1&size=1`;
+			const res = await fetch(`https://corsproxy.io/?${encodeURIComponent(searchUrl)}`, {
 				headers: { "mod-accesstoken": token, "mod-user-id": uid }
 			});
-			const profileJson = await profileRes.json();
+			const json = await res.json();
 			
-			const ppsn = profileJson.data?.ppsn;
+			// 從搜尋結果清單中獲取第一個匹配者的 ppsn
+			const foundUser = json.data?.items?.[0];
+			const ppsn = foundUser?.ppsn;
 
 			if (!ppsn) {
-				status.innerHTML = "❌ 找不到該 ID 對應的用戶，請檢查 ID 是否正確。";
+				status.innerHTML = `❌ 找不到 ID 為 ${inputId} 的用戶，請確認格式。`;
 				return;
 			}
 
-			// Step 2: 使用換到的 PPSN 抓取清單
+			status.innerHTML = `✅ 找到用戶: ${foundUser.nickname} (PPSN: ${ppsn})`;
 			fetchItems(ppsn);
 
 		} catch (err) {
-			status.innerHTML = "❌ 轉換過程中發生錯誤。";
+			status.innerHTML = "❌ 搜尋 API 請求失敗，請檢查 Token 是否過期。";
 		}
 	}
 
@@ -91,8 +91,6 @@
 		const grid = document.getElementById('item_grid');
 		const token = localStorage.getItem('msw_token');
 		const uid = localStorage.getItem('msw_uid');
-
-		status.innerHTML = `⏳ 正在抓取 PPSN: ${ppsn} 的真實價格...`;
 
 		try {
 			const api = `https://mod-gateway-prd-tokyo-2.nexon.com/mverse/v1/shop/mod/inventory/avatars/manage/equip/list/${ppsn}`;
@@ -105,33 +103,29 @@
 			const filteredItems = items.filter(item => ALLOWED_TYPES.hasOwnProperty(item.avatarType));
 
 			if (filteredItems.length === 0) {
-				status.innerHTML = "⚠️ 找不到符合類別的商品。";
+				status.innerHTML += " | ⚠️ 該賣家目前無上架指定類別商品。";
 				return;
 			}
 
 			grid.innerHTML = "";
 			filteredItems.forEach(item => {
-				const typeLabel = ALLOWED_TYPES[item.avatarType];
-				const realPrice = item.price !== undefined ? item.price : "0"; 
-				
+				const price = item.price ?? 0;
 				const card = document.createElement('div');
 				card.className = 'item-card';
 				card.innerHTML = `
 					<div class="img-container"><img src="${item.itemThumbnailUrl}"></div>
 					<div class="info-container">
-						<div class="price-badge">${realPrice} WC</div>
+						<div class="price-badge">${price} WC</div>
 						<div class="info-row"><span class="label">名稱</span> <b>${item.itemName}</b></div>
 						<div class="info-row"><span class="label">ID</span> <b>${item.itemId}</b></div>
-						<div class="info-row"><span class="label">類別</span> <b>${typeLabel}</b></div>
+						<div class="info-row"><span class="label">類別</span> <b>${ALLOWED_TYPES[item.avatarType]}</b></div>
 					</div>
-					<button class="btn-sync" onclick="syncItem('${item.itemId}', '${item.itemName}', '${item.itemThumbnailUrl}', '${realPrice}')">🚀 同步真實資料</button>
+					<button class="btn-sync" onclick="syncItem('${item.itemId}', '${item.itemName}', '${item.itemThumbnailUrl}', '${price}')">🚀 同步真實資料</button>
 				`;
 				grid.appendChild(card);
 			});
-
-			status.innerHTML = `✅ 已成功獲取 ${filteredItems.length} 件商品。`;
 		} catch (err) {
-			status.innerHTML = "❌ 抓取商品清單失敗。";
+			status.innerHTML = "❌ 無法讀取商品清單。";
 		}
 	}
 
@@ -141,7 +135,7 @@
 			wc: price + "wc",
 			id: id,
 			img: img,
-			update_time: new Date().toISOString()
+			ts: Date.now()
 		};
 
 		try {
@@ -164,12 +158,12 @@
 			const putRes = await fetch(url, {
 				method: "PUT",
 				headers: { "Authorization": `token ${GITHUB_CONFIG.token}`, "Content-Type": "application/json" },
-				body: JSON.stringify({ message: `🛒 Sync: ${payload.keyword} (${price}wc)`, content: content, sha: sha })
+				body: JSON.stringify({ message: `Update ${payload.keyword}`, content: content, sha: sha })
 			});
 
-			if (putRes.ok) alert(`🎉 [${payload.keyword}] 同步成功！`);
+			if (putRes.ok) alert(`🎉 [${payload.keyword}] 以 ${price}WC 同步成功！`);
 		} catch (err) {
-			alert("同步出錯: " + err.message);
+			alert("同步失敗: " + err.message);
 		}
 	}
 </script>
