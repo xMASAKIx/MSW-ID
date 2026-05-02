@@ -2,18 +2,21 @@
 <html lang="zh-TW">
 <head>
 	<meta charset="UTF-8">
-	<title>MSW Admin Panel (Fixed)</title>
+	<title>MSW Admin Panel</title>
 	<style>
-		body { font-family: sans-serif; background: #0f0f12; color: #e0e0e0; display: flex; justify-content: center; padding: 40px; }
-		.card { background: #1a1a1d; padding: 30px; border-radius: 16px; width: 450px; border: 1px solid #333; }
+		body { font-family: 'Segoe UI', sans-serif; background: #0f0f12; color: #e0e0e0; display: flex; justify-content: center; padding: 40px; }
+		.card { background: #1a1a1d; padding: 30px; border-radius: 16px; box-shadow: 0 10px 30px rgba(0,0,0,0.5); width: 450px; border: 1px solid #333; }
 		h2 { margin-top: 0; color: #fff; font-size: 20px; border-bottom: 1px solid #333; padding-bottom: 15px; }
-		label { display: block; margin-top: 15px; font-size: 11px; color: #888; font-weight: 600; }
-		input { width: 100%; padding: 12px; margin-top: 5px; border: 1px solid #333; border-radius: 8px; background: #252529; color: #fff; box-sizing: border-box; }
-		button { width: 100%; padding: 14px; margin-top: 20px; border: none; border-radius: 8px; cursor: pointer; font-weight: bold; }
-		.btn-fetch { background: #4e5d6e; color: white; }
-		.btn-sync { background: #5865F2; color: white; font-size: 16px; }
-		#status { margin-top: 15px; text-align: center; font-size: 12px; min-height: 20px; }
-		#json_preview { background: #000; color: #9cdcfe; padding: 15px; border-radius: 8px; font-family: monospace; font-size: 11px; margin-top: 20px; display: none; white-space: pre; border: 1px solid #444; }
+		label { display: block; margin-top: 15px; font-size: 11px; color: #888; font-weight: 600; text-transform: uppercase; }
+		input { width: 100%; padding: 12px; margin-top: 5px; border: 1px solid #333; border-radius: 8px; background: #252529; color: #fff; box-sizing: border-box; outline: none; transition: 0.2s; }
+		input:focus { border-color: #5865F2; background: #2a2a2e; }
+		button { width: 100%; padding: 14px; margin-top: 20px; border: none; border-radius: 8px; cursor: pointer; font-weight: bold; transition: 0.3s; }
+		.btn-fetch { background: #4e5d6e; color: white; border: 1px solid #666; }
+		.btn-fetch:hover { background: #5c6d7e; }
+		.btn-sync { background: #5865F2; color: white; font-size: 16px; box-shadow: 0 4px 15px rgba(88,101,242,0.3); }
+		.btn-sync:hover { background: #4752c4; transform: translateY(-2px); }
+		#status { margin-top: 15px; text-align: center; font-size: 12px; min-height: 20px; color: #aaa; }
+		#json_preview { background: #000; color: #9cdcfe; padding: 15px; border-radius: 8px; font-family: 'Consolas', monospace; font-size: 11px; margin-top: 20px; display: none; white-space: pre; border: 1px solid #444; overflow-x: auto; }
 	</style>
 </head>
 <body>
@@ -22,16 +25,16 @@
 	<h2>📦 MSW 商品上架助手</h2>
 	
 	<label>MSW Access Token</label>
-	<input type="password" id="msw_token">
+	<input type="password" id="msw_token" placeholder="貼上 mod-accesstoken">
 	
 	<label>MSW User ID</label>
-	<input type="text" id="msw_uid">
+	<input type="text" id="msw_uid" placeholder="貼上 mod-user-id">
 
 	<hr style="border: 0; border-top: 1px solid #333; margin: 25px 0;">
 
-	<label>商品 ID</label>
+	<label>商品 ID (例如: KW8L9VSIN)</label>
 	<div style="display: flex; gap: 10px;">
-		<input type="text" id="target_id" placeholder="例如: KW8L9VSIN">
+		<input type="text" id="target_id" placeholder="輸入 ID" style="margin-top:0">
 		<button class="btn-fetch" onclick="fetchNexonData()" style="margin-top:0; width: 100px;">抓取</button>
 	</div>
 
@@ -46,11 +49,12 @@
 	<label>圖片連結 (Img)</label>
 	<input type="text" id="res_img">
 
-	<button class="btn-sync" onclick="syncToGithub()">🚀 同步至 GitHub</button>
+	<button class="btn-sync" onclick="syncToGithub()">🚀 同步至 GitHub 倉庫</button>
 	<div id="status"></div>
 </div>
 
 <script>
+	// GitHub 設定 (已包含你之前的 Token)
 	const GITHUB_CONFIG = {
 		token: "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",
 		owner: "xmasakix",
@@ -66,42 +70,49 @@
 	async function fetchNexonData() {
 		const token = document.getElementById('msw_token').value.trim();
 		const uid = document.getElementById('msw_uid').value.trim();
-		const cleanId = document.getElementById('target_id').value.trim().replace(/[\/\\]/g, '');
+		const rawId = document.getElementById('target_id').value.trim();
+		const cleanId = rawId.replace(/[^a-zA-Z0-9]/g, ''); // 僅保留字母數字
 		
 		const status = document.getElementById('status');
 		const preview = document.getElementById('json_preview');
 
-		if (!cleanId || !token) return alert("請輸入 Token 與 ID");
+		if (!cleanId || !token) return alert("請完整填寫 Token 與 ID");
 
 		localStorage.setItem('msw_token', token);
 		localStorage.setItem('msw_uid', uid);
 
-		status.innerHTML = "⏳ 嘗試連線 (避免編碼路徑)...";
+		status.innerHTML = "⏳ 正在嘗試自動匹配 API 版本...";
 		preview.style.display = "none";
 
-		// 關鍵修正：不要對整個網址進行 encodeURIComponent，只針對 Proxy 結構
-		// 這能解決 image_a24449.png 中出現的 %2F 路徑錯誤
-		const apiPath = `https://mod-gateway-prd-tokyo-2.nexon.com/mod/v1/avatar/shop/v2/items/${cleanId}`;
-		const proxyUrl = `https://corsproxy.io/?${apiPath}`; 
+		// 自動重試策略：先試 v2，失敗試 v1
+		const endpoints = [
+			`https://mod-gateway-prd-tokyo-2.nexon.com/mod/v1/avatar/shop/v2/items/${cleanId}`,
+			`https://mod-gateway-prd-tokyo-2.nexon.com/mod/v1/avatar/shop/v1/items/${cleanId}`
+		];
 
-		try {
-			const res = await fetch(proxyUrl, {
-				headers: {
-					"mod-accesstoken": token,
-					"mod-user-id": uid
+		let foundData = null;
+
+		for (const api of endpoints) {
+			try {
+				const url = `https://corsproxy.io/?${encodeURIComponent(api)}`;
+				const res = await fetch(url, {
+					headers: { "mod-accesstoken": token, "mod-user-id": uid }
+				});
+
+				if (res.ok) {
+					const json = await res.json();
+					foundData = json.data || json;
+					break; 
 				}
-			});
+			} catch (e) { console.warn("嘗試路徑失敗:", api); }
+		}
 
-			if (!res.ok) throw new Error(`HTTP ${res.status}`);
-
-			const json = await res.json();
-			const data = json.data || json;
-
+		if (foundData) {
 			const item = {
-				"keyword": (data.itemName || data.name || "未命名").replace(/\n|\r/g, "").trim(),
-				"wc": (data.itemPrice || data.slotPrice || 0) + "wc",
+				"keyword": (foundData.itemName || foundData.name || "未命名").replace(/\n|\r/g, "").trim(),
+				"wc": (foundData.itemPrice || foundData.slotPrice || 0) + "wc",
 				"id": cleanId,
-				"img": data.itemImageUrl || data.itemThumbnailUrl || data.thumbnail || ""
+				"img": foundData.itemImageUrl || foundData.itemThumbnailUrl || foundData.thumbnail || ""
 			};
 
 			document.getElementById('res_name').value = item.keyword;
@@ -110,10 +121,9 @@
 
 			preview.innerText = JSON.stringify(item, null, "\t");
 			preview.style.display = "block";
-			status.innerHTML = "✅ 資料抓取成功！";
-
-		} catch (err) {
-			status.innerHTML = `<span style="color:#ff4d4d">❌ 錯誤: ${err.message} (請檢查 ID 是否存在)</span>`;
+			status.innerHTML = "✅ 抓取成功！";
+		} else {
+			status.innerHTML = `<span style="color:#ff4d4d">❌ 404: 兩路徑皆找不到商品。請確認 ID 是否正確或已下架。</span>`;
 		}
 	}
 
@@ -126,7 +136,9 @@
 			img: document.getElementById('res_img').value
 		};
 
-		status.innerHTML = "🚀 同步至 GitHub...";
+		if (!payload.id || !payload.keyword) return alert("沒有有效的商品資料可同步");
+
+		status.innerHTML = "🚀 正在推送至 GitHub...";
 
 		try {
 			const url = `https://api.github.com/repos/${GITHUB_CONFIG.owner}/${GITHUB_CONFIG.repo}/contents/${GITHUB_CONFIG.path}`;
@@ -149,13 +161,13 @@
 			const putRes = await fetch(url, {
 				method: "PUT",
 				headers: { "Authorization": `token ${GITHUB_CONFIG.token}`, "Content-Type": "application/json" },
-				body: JSON.stringify({ message: `📦 Update: ${payload.keyword}`, content: content, sha: sha })
+				body: JSON.stringify({ message: `📦 Sync Product: ${payload.keyword}`, content: content, sha: sha })
 			});
 
-			if (putRes.ok) status.innerHTML = "🎉 同步成功！";
+			if (putRes.ok) status.innerHTML = "🎉 同步完成！檔案已更新。";
 			else throw new Error("GitHub 寫入失敗");
 		} catch (err) {
-			status.innerHTML = `<span style="color:#ff4d4d">❌ 同步失敗: ${err.message}</span>`;
+			status.innerHTML = `<span style="color:#ff4d4d">❌ 同步錯誤: ${err.message}</span>`;
 		}
 	}
 </script>
