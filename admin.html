@@ -28,9 +28,9 @@
 
 <div class="container">
 	<div class="config-card">
-		<h2 style="margin-top:0; font-size:18px;">📦 商品管理系統 (POST 搜尋修復版)</h2>
+		<h2 style="margin-top:0; font-size:18px;">📦 商品管理系統 (商店路徑修正版)</h2>
 		<div class="input-group">
-			<input type="text" id="target_id" placeholder="請輸入 5 碼 ID (Profile Code)">
+			<input type="text" id="target_id" placeholder="請輸入 5 碼 ID">
 			<button onclick="handleSearch()">獲取真實價格</button>
 		</div>
 		<div id="status">準備就緒</div>
@@ -39,7 +39,6 @@
 </div>
 
 <script>
-	// [已省略 GITHUB_CONFIG 與 ALLOWED_TYPES，請沿用之前的設定]
 	const GITHUB_CONFIG = {
 		token: "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",
 		owner: "xmasakix",
@@ -59,41 +58,32 @@
 		const token = localStorage.getItem('msw_token');
 		const uid = localStorage.getItem('msw_uid');
 
-		if (!inputId || !token) return alert("請輸入 ID 並確認已在 LocalStorage 設定 Token");
+		if (!inputId || !token) return alert("請輸入 ID 並確認 Token 已儲存");
 
 		grid.innerHTML = "";
-		status.innerHTML = `🔍 正在搜尋 5 碼 ID: ${inputId}...`;
+		status.innerHTML = `🔍 正在嘗試透過商店路徑搜尋: ${inputId}...`;
 
 		try {
-			// 修改重點：改用 /friends/search 且使用 POST 方法
-			const searchUrl = `https://mod-gateway-prd-tokyo-2.nexon.com/mverse/v1/friends/search`;
-			const res = await fetch(`https://corsproxy.io/?${encodeURIComponent(searchUrl)}`, {
-				method: "POST", // 改為 POST
+			// 修改：改用商店專用的搜尋接口，這通常對 ProfileCode 的支援度較高
+			const storeSearchUrl = `https://mod-gateway-prd-tokyo-2.nexon.com/mverse/v1/shop/mod/products/search?keyword=${inputId}&page=1&size=1`;
+			const res = await fetch(`https://corsproxy.io/?${encodeURIComponent(storeSearchUrl)}`, {
 				headers: { 
 					"mod-accesstoken": token, 
-					"mod-user-id": uid,
-					"Content-Type": "application/json"
-				},
-				body: JSON.stringify({
-					"query": inputId,
-					"page": 1,
-					"size": 10
-				})
+					"mod-user-id": uid 
+				}
 			});
 			
 			const json = await res.json();
-			
-			// 從回傳的列表中尋找 profileCode 完全符合的項目
-			const items = json.data?.items || [];
-			const foundUser = items.find(u => u.profileCode === inputId) || items[0];
-			const ppsn = foundUser?.ppsn;
+			// 商店搜尋回傳的是商品清單，我們從第一個商品中提取賣家的 ppsn
+			const firstProduct = json.data?.items?.[0];
+			const ppsn = firstProduct?.authorPpsn;
 
 			if (!ppsn) {
-				status.innerHTML = `❌ 搜尋回傳異常。API 訊息: ${json.error || '找不到用戶'}`;
+				status.innerHTML = `❌ 透過商店也找不到該 ID。請確認 5 碼 ID 是否正確，或該賣家是否有上架任何商品。`;
 				return;
 			}
 
-			status.innerHTML = `✅ 找到用戶: ${foundUser.nickname} (PPSN: ${ppsn})`;
+			status.innerHTML = `✅ 找到賣家 PPSN: ${ppsn}，正在抓取完整清單...`;
 			fetchItems(ppsn);
 
 		} catch (err) {
@@ -118,7 +108,7 @@
 			const filteredItems = items.filter(item => ALLOWED_TYPES.hasOwnProperty(item.avatarType));
 
 			if (filteredItems.length === 0) {
-				status.innerHTML = `⚠️ 找到用戶但無上架商品。 (PPSN: ${ppsn})`;
+				status.innerHTML = `⚠️ 已找到賣家 (${ppsn}) 但沒有符合類別的商品。`;
 				return;
 			}
 
@@ -138,13 +128,12 @@
 				`;
 				grid.appendChild(card);
 			});
-			status.innerHTML = `✅ 已載入 ${filteredItems.length} 件商品。`;
+			status.innerHTML = `✅ 成功載入 ${filteredItems.length} 件商品。`;
 		} catch (err) {
-			status.innerHTML = "❌ 抓取商品清單失敗。";
+			status.innerHTML = "❌ 讀取賣家清單失敗。";
 		}
 	}
 
-	// [已省略 syncItem 函數，請沿用之前的設定，確保使用 Tab 縮排]
 	async function syncItem(id, name, img, price) {
 		const payload = {
 			keyword: name.replace(/\n|\r/g, "").trim(),
