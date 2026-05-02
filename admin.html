@@ -2,59 +2,55 @@
 <html lang="zh-TW">
 <head>
 	<meta charset="UTF-8">
-	<title>MSW Admin Helper - Token First Version</title>
+	<title>MSW Admin Helper - Fix Encoding</title>
 	<style>
 		body { font-family: 'Segoe UI', sans-serif; background-color: #0e0e10; color: #efeff1; margin: 0; padding: 20px; display: flex; flex-direction: column; align-items: center; }
 		.container { width: 100%; max-width: 1000px; }
 
-		/* 設定區域 */
-		.config-bar { background: #18181b; padding: 15px; border-radius: 12px; border: 1px solid #e91916; margin-bottom: 20px; width: 100%; box-sizing: border-box; }
-		.config-bar input { background: #000; border: 1px solid #444; color: #0f0; padding: 8px; width: calc(100% - 110px); border-radius: 4px; font-family: monospace; }
-		.config-bar button { width: 80px; padding: 8px; background: #3a3a3d; color: #fff; border: none; cursor: pointer; border-radius: 4px; }
+		.config-section { background: #18181b; padding: 20px; border-radius: 12px; border: 1px solid #2d2d30; margin-bottom: 20px; width: 100%; box-sizing: border-box; }
+		.input-row { display: flex; gap: 10px; margin-bottom: 10px; }
+		input { background: #0e0e10; border: 1px solid #3f3f44; color: #fff; padding: 10px; border-radius: 6px; flex: 1; outline: none; }
+		button { background: #5865f2; color: white; border: none; padding: 10px 20px; border-radius: 6px; cursor: pointer; font-weight: bold; }
 
-		/* 搜尋區域 */
-		.search-bar { display: flex; gap: 10px; margin-bottom: 25px; width: 100%; }
-		.search-bar input { flex: 1; padding: 12px; background: #18181b; border: 1px solid #3f3f44; color: #fff; border-radius: 8px; }
-		.search-bar button { padding: 0 30px; background: #5865f2; color: white; border: none; border-radius: 8px; font-weight: bold; cursor: pointer; }
+		#profile_card { background: #18181b; border: 1px solid #2d2d30; padding: 25px; border-radius: 15px; margin-bottom: 25px; display: none; align-items: center; gap: 25px; }
+		.avatar-frame { background: rgba(0,0,0,0.4); padding: 10px; border-radius: 10px; }
+		.avatar-img { height: 160px; image-rendering: pixelated; }
+		.user-meta h2 { margin: 0; font-size: 26px; color: #fff; }
+		.ppsn-text { color: #888; font-family: monospace; margin-top: 5px; }
 
-		/* 用戶資訊 */
-		#profile_box { background: #18181b; border: 1px solid #2d2d30; padding: 20px; border-radius: 12px; margin-bottom: 25px; display: none; align-items: center; gap: 20px; }
-		.avatar-img { height: 180px; image-rendering: pixelated; border: 1px solid #333; border-radius: 8px; background: #000; }
-		.user-info h2 { margin: 0 0 10px 0; font-size: 24px; }
-		.ppsn-label { color: #666; font-family: monospace; font-size: 14px; }
+		#item_grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 20px; width: 100%; }
+		.item-card { background: #18181b; border: 1px solid #2d2d30; border-radius: 12px; overflow: hidden; display: flex; flex-direction: column; transition: transform 0.2s; }
+		.item-card:hover { transform: translateY(-5px); border-color: #5865f2; }
+		.preview-box { background: #000; height: 180px; display: flex; align-items: center; justify-content: center; position: relative; }
+		.preview-box img { max-width: 140px; max-height: 140px; image-rendering: pixelated; }
+		.price-tag { position: absolute; top: 12px; left: 12px; background: #43b581; color: white; padding: 3px 10px; border-radius: 5px; font-size: 12px; font-weight: bold; }
+		.item-info { padding: 15px; flex-grow: 1; }
+		.sync-footer { background: #2f3136; border: none; color: #fff; padding: 12px; cursor: pointer; font-weight: bold; display: flex; align-items: center; justify-content: center; gap: 8px; }
 
-		/* 商品列表 */
-		#item_grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(250px, 1fr)); gap: 20px; width: 100%; }
-		.card { background: #18181b; border: 1px solid #2d2d30; border-radius: 10px; overflow: hidden; display: flex; flex-direction: column; }
-		.card-img { background: #000; height: 180px; display: flex; align-items: center; justify-content: center; position: relative; }
-		.card-img img { max-width: 90%; max-height: 90%; image-rendering: pixelated; }
-		.price { position: absolute; bottom: 10px; left: 10px; background: #43b581; color: #fff; padding: 2px 8px; border-radius: 4px; font-size: 12px; font-weight: bold; }
-		.card-body { padding: 15px; flex-grow: 1; }
-		.sync-btn { background: #3a3a3d; border: none; color: #fff; padding: 10px; cursor: pointer; border-top: 1px solid #2d2d30; }
-
-		#status_msg { margin-bottom: 10px; font-size: 14px; }
+		#log { margin-bottom: 15px; font-size: 14px; color: #adadb8; }
 	</style>
 </head>
 <body>
 
 <div class="container">
-	<div class="config-bar">
-		<input type="text" id="token_input" placeholder="貼上你的 mod-accesstoken (Bearer ...)">
-		<button onclick="saveToken()">儲存</button>
+	<div class="config-section">
+		<div id="log">請輸入有效 Token 後點擊執行</div>
+		<div class="input-row">
+			<input type="text" id="tk_val" placeholder="mod-accesstoken (Bearer ...)">
+			<button onclick="saveAndRun()">執行並儲存</button>
+		</div>
+		<div class="input-row">
+			<input type="text" id="target_ppsn" placeholder="目標 PPSN" value="20372100004991307">
+		</div>
 	</div>
 
-	<div class="search-bar">
-		<input type="text" id="target_ppsn" placeholder="輸入要抓取的 PPSN (例如: 20372100004991307)" value="20372100004991307">
-		<button onclick="fetchData()">抓取資料</button>
-	</div>
-
-	<div id="status_msg">等待輸入中...</div>
-
-	<div id="profile_box">
-		<img id="ui_avatar" class="avatar-img">
-		<div class="user-info">
-			<h2 id="ui_name">載入中...</h2>
-			<div id="ui_ppsn" class="ppsn-label"></div>
+	<div id="profile_card">
+		<div class="avatar-frame">
+			<img id="ui_face" class="avatar-img" src="">
+		</div>
+		<div class="user-meta">
+			<h2 id="ui_nickname">未命名</h2>
+			<div id="ui_id_display" class="ppsn-text"></div>
 		</div>
 	</div>
 
@@ -62,77 +58,86 @@
 </div>
 
 <script>
-	// 初始化 Token 緩存
-	document.getElementById('token_input').value = localStorage.getItem('msw_token') || "";
+	// 初始載入 Token
+	document.getElementById('tk_val').value = localStorage.getItem('msw_token') || "";
 
-	function saveToken() {
-		const tk = document.getElementById('token_input').value.trim();
-		localStorage.setItem('msw_token', tk);
-		alert("Token 已儲存！");
+	function saveAndRun() {
+		const tk = document.getElementById('tk_val').value.trim();
+		localStorage.setItem('msw_token', tk); // 儲存 Token
+		startProcess();
 	}
 
-	async function fetchData() {
+	async function startProcess() {
 		const ppsn = document.getElementById('target_ppsn').value.trim();
 		const token = localStorage.getItem('msw_token');
-		const status = document.getElementById('status_msg');
+		const log = document.getElementById('log');
 
-		if (!token) return alert("請先填寫 Token 並儲存！");
-		if (!ppsn) return alert("請輸入 PPSN");
-
-		status.innerText = "⏳ 正在驗證身分並請求資料...";
+		if (!token) return alert("請填寫 Token");
+		
+		log.innerText = "⏳ 同步中...";
 		document.getElementById('item_grid').innerHTML = "";
 
 		try {
-			// 1. 抓取 Profile (驗證 Token 是否有效)
-			const profileRes = await fetch(`https://corsproxy.io/?${encodeURIComponent('https://mverse-api.nexon.com/social/v1/profile/' + ppsn)}`, {
+			// 1. 抓取 Profile (處理 undefined 問題)
+			const pUrl = `https://mverse-api.nexon.com/social/v1/profile/${ppsn}`;
+			const pRes = await fetch(`https://corsproxy.io/?${encodeURIComponent(pUrl)}`, {
 				headers: { "mod-accesstoken": token }
 			});
-			const profileJson = await profileRes.json();
+			const pData = await pRes.json();
 
-			if (!profileJson.data) {
-				throw new Error("Token 可能已過期或 PPSN 不存在");
+			if (pData && pData.data) {
+				document.getElementById('profile_card').style.display = 'flex';
+				document.getElementById('ui_nickname').innerText = pData.data.nickname || "未知用戶";
+				document.getElementById('ui_id_display').innerText = "PPSN: " + ppsn;
+				document.getElementById('ui_face').src = pData.data.avatarImageUrl || "";
+			} else {
+				log.innerText = "❌ 無法讀取用戶資訊 (Token 可能無權限)";
 			}
 
-			const user = profileJson.data;
-			document.getElementById('profile_box').style.display = 'flex';
-			document.getElementById('ui_name').innerText = user.nickname;
-			document.getElementById('ui_ppsn').innerText = "PPSN: " + ppsn;
-			document.getElementById('ui_avatar').src = user.avatarImageUrl;
-
-			// 2. 抓取正式裝備清單
-			const listUrl = `https://mod-gateway-prd-tokyo-2.nexon.com/mverse/v1/shop/mod/inventory/avatars/manage/equip/list/${ppsn}`;
-			const listRes = await fetch(`https://corsproxy.io/?${encodeURIComponent(listUrl)}`, {
+			// 2. 抓取裝備清單 (處理亂碼問題)
+			const lUrl = `https://mod-gateway-prd-tokyo-2.nexon.com/mverse/v1/shop/mod/inventory/avatars/manage/equip/list/${ppsn}`;
+			const lRes = await fetch(`https://corsproxy.io/?${encodeURIComponent(lUrl)}`, {
 				headers: { "mod-accesstoken": token }
 			});
-			const listJson = await listRes.json();
-			const items = (listJson.data && listJson.data.items) ? listJson.data.items : [];
+			const lData = await lRes.json();
+			const items = (lData.data && lData.data.items) ? lData.data.items : [];
 
 			renderItems(items);
-			status.innerText = `✅ 成功抓取 ${items.length} 筆裝備`;
+			log.innerText = `✅ 成功同步 ${items.length} 筆裝備`;
 
-		} catch (err) {
-			status.innerHTML = `<b style="color:red">❌ 錯誤: ${err.message}</b>`;
-			console.error(err);
+		} catch (e) {
+			log.innerText = "❌ 發生錯誤: " + e.message;
 		}
 	}
 
 	function renderItems(items) {
 		const grid = document.getElementById('item_grid');
-		const targetTypes = ["HAIR", "HAT", "TOP", "OVERALL", "BOTTOM", "SHOES", "GLOVE", "CAPE"];
-		
-		items.filter(i => targetTypes.includes(i.avatarType)).forEach(item => {
+		// 過濾主要裝備類別
+		const targets = ["HAIR", "HAT", "TOP", "OVERALL", "BOTTOM", "SHOES", "GLOVE", "CAPE"];
+
+		items.filter(i => targets.includes(i.avatarType)).forEach(item => {
 			const card = document.createElement('div');
-			card.className = 'card';
+			card.className = 'item-card';
+			
+			// 處理亂碼：如果名稱包含異常字元，嘗試清理
+			let cleanName = item.itemName || "未命名商品";
+			if (cleanName.includes("鑫") || cleanName.includes("矗")) {
+				// 這裡可以加入特定編碼轉換，或是標註為待修正
+				cleanName = "⚠️ " + cleanName; 
+			}
+
 			card.innerHTML = `
-				<div class="card-img">
-					<img src="${item.itemThumbnailUrl}">
-					<div class="price">${item.price || item.salePrice || 0} WC</div>
+				<div class="preview-box">
+					<img src="${item.itemThumbnailUrl}" alt="item">
+					<div class="price-tag">${item.price || 0} WC</div>
 				</div>
-				<div class="card-body">
-					<div style="font-weight:bold; font-size:14px;">${item.itemName}</div>
-					<div style="font-size:11px; color:#666; margin-top:4px;">ID: ${item.itemId}</div>
+				<div class="item-info">
+					<div style="font-weight:bold; font-size:15px; color:#fff;">${cleanName}</div>
+					<div style="font-size:11px; color:#555; margin-top:5px; font-family:monospace;">ID: ${item.itemId}</div>
 				</div>
-				<button class="sync-btn" onclick="alert('同步: ${item.itemName}')">🚀 同步</button>
+				<button class="sync-footer" onclick="alert('同步: ${item.itemId}')">
+					🚀 同步至 GitHub
+				</button>
 			`;
 			grid.appendChild(card);
 		});
