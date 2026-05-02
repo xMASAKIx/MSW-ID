@@ -2,7 +2,7 @@
 <html lang="zh-TW">
 <head>
 	<meta charset="UTF-8">
-	<title>MSW 商品管理員 - Console 偵錯版</title>
+	<title>MSW 商品管理員 - 方案 A (原始價格掃描版)</title>
 	<style>
 		body { font-family: 'Segoe UI', sans-serif; background: #0f0f12; color: #e0e0e0; display: flex; flex-direction: column; align-items: center; padding: 40px; }
 		.container { width: 100%; max-width: 1000px; }
@@ -20,7 +20,7 @@
 		.info-row { display: flex; align-items: flex-start; margin-bottom: 8px; font-size: 13px; color: #b0b0b0; }
 		.info-row span.label { min-width: 70px; color: #888; }
 		.info-row b { color: #fff; margin-left: 5px; word-break: break-all; }
-		.btn-sync { background: #5865f2; color: white; border: none; padding: 12px; width: 100%; cursor: pointer; font-weight: bold; transition: 0.2s; }
+		.btn-sync { background: #5865f2; color: white; border: none; padding: 12px; width: 100%; cursor: pointer; font-weight: bold; }
 		.btn-sync:hover { background: #4752c4; }
 		#status { margin-top: 10px; font-size: 12px; color: #888; }
 	</style>
@@ -29,12 +29,12 @@
 
 <div class="container">
 	<div class="config-card">
-		<h2 style="margin-top:0; font-size:18px;">📦 MSW 商品管理 (含 Console 偵錯)</h2>
+		<h2 style="margin-top:0; font-size:18px;">📦 MSW 商店同步 - 方案 A (價格掃描)</h2>
 		<div class="input-group">
 			<input type="text" id="target_ppsn" placeholder="請輸入目標作者 PPSN">
 			<button onclick="fetchItems()">抓取清單</button>
 		</div>
-		<div id="status">準備就緒 (執行後請按 F12 查看主控台)</div>
+		<div id="status">準備就緒，執行後請觀察 Console 資料結構</div>
 	</div>
 	<div id="item_grid"></div>
 </div>
@@ -60,9 +60,9 @@
 		const uid = localStorage.getItem('msw_uid');
 
 		if (!ppsn) return alert("請輸入 PPSN");
-		if (!token || !uid) return alert("請確認 localStorage 中的 token 與 uid 已設定");
+		if (!token || !uid) return alert("錯誤：LocalStorage 遺失認證資料");
 
-		status.innerHTML = "⏳ 正在請求 API 並列印資料到 Console...";
+		status.innerHTML = "⏳ 正在掃描作者商店商品...";
 		grid.innerHTML = "";
 
 		try {
@@ -72,29 +72,31 @@
 			});
 			
 			const json = await res.json();
-			
-			// --- 這裡會將完整的 API 回傳資料印在瀏覽器的 F12 Console ---
-			console.log("🔍 [Debug] MSW API 原始回傳:", json);
-			
-			const items = json.data?.items || [];
+			console.log("🔍 [Debug] API 原始回傳:", json);
 
+			const items = json.data?.items || [];
 			const filteredItems = items.filter(item => ALLOWED_TYPES.hasOwnProperty(item.avatarType));
 
 			if (filteredItems.length === 0) {
-				status.innerHTML = "⚠️ 找不到符合部位的商品，請檢查 Console 資料結構。";
+				status.innerHTML = "⚠️ 找不到可顯示的商品，請檢查 Console 內 data 節點。";
 				return;
 			}
 
 			filteredItems.forEach(item => {
-				// 嘗試從不同欄位抓取價格
-				const realPrice = item.price || item.salePrice || item.discountPrice || 0;
+				// 方案 A 核心：全方位價格掃描
+				const realPrice = 
+					item.price || 
+					item.salePrice || 
+					item.discountPrice || 
+					(item.priceInfo ? item.priceInfo.price : 0) ||
+					(item.packageInfo ? item.packageInfo.price : 0);
 				
 				const card = document.createElement('div');
 				card.className = 'item-card';
 				card.innerHTML = `
 					<div class="img-container"><img src="${item.itemThumbnailUrl}"></div>
 					<div class="info-container">
-						<div class="price-badge">${realPrice} WC</div>
+						<div class="price-badge">${realPrice > 0 ? realPrice + ' WC' : '查無價格 (0)'}</div>
 						<div class="info-row"><span class="label">名稱</span> <b>${item.itemName}</b></div>
 						<div class="info-row"><span class="label">ID</span> <b>${item.itemId}</b></div>
 						<div class="info-row"><span class="label">類型</span> <b>${ALLOWED_TYPES[item.avatarType]}</b></div>
@@ -104,10 +106,10 @@
 				grid.appendChild(card);
 			});
 
-			status.innerHTML = `✅ 已載入 ${filteredItems.length} 件商品。請檢查 Console 確認價格欄位是否正確。`;
+			status.innerHTML = `✅ 成功掃描 ${filteredItems.length} 件商品。`;
 		} catch (err) {
-			console.error("❌ 發生錯誤:", err);
-			status.innerHTML = "❌ 抓取失敗，請查看 Console 報錯資訊。";
+			console.error(err);
+			status.innerHTML = "❌ 請求失敗，請檢查網路或 Token。";
 		}
 	}
 
@@ -134,7 +136,7 @@
 			const idx = list.findIndex(i => i.id === payload.id);
 			if (idx > -1) list[idx] = payload; else list.push(payload);
 
-			// 使用 Tab 鍵縮排
+			// 依照使用者規範使用 Tab 鍵縮排
 			const jsonStr = JSON.stringify(list, null, "\t");
 			const content = btoa(unescape(encodeURIComponent(jsonStr)));
 
@@ -142,16 +144,15 @@
 				method: "PUT",
 				headers: { "Authorization": `token ${GITHUB_CONFIG.token}`, "Content-Type": "application/json" },
 				body: JSON.stringify({ 
-					message: `📦 Sync: ${payload.keyword} (${price}WC)`, 
+					message: `📦 Update: ${payload.keyword} (${price}WC)`, 
 					content: content, 
 					sha: sha 
 				})
 			});
 
-			if (putRes.ok) alert(`🎉 同步成功！`);
+			if (putRes.ok) alert(`🎉 同步完成！價格：${price} WC`);
 		} catch (err) {
-			alert("同步錯誤，請查看 Console。");
-			console.error(err);
+			alert("同步失敗：" + err.message);
 		}
 	}
 </script>
