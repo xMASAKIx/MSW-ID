@@ -1,288 +1,277 @@
 <!DOCTYPE html>
 <html lang="zh-TW">
 <head>
-    <meta charset="UTF-8">
-    <title>MSW 上架助手 - 完整管理版</title>
-    <style>
-        body { font-family: sans-serif; background: #f4f7f9; padding: 20px; display: flex; gap: 20px; justify-content: center; }
-        .main-box { background: white; padding: 25px; border-radius: 12px; box-shadow: 0 4px 15px rgba(0,0,0,0.1); width: 400px; }
-        .account-box { background: #fff; padding: 20px; border-radius: 12px; box-shadow: 0 4px 15px rgba(0,0,0,0.1); width: 250px; }
-        
-        h3 { margin-top: 0; color: #333; border-bottom: 2px solid #eee; padding-bottom: 10px; }
-        label { display: block; font-size: 12px; color: #666; margin-top: 10px; font-weight: bold; }
-        input { width: 100%; padding: 10px; margin-top: 5px; border: 1px solid #ddd; border-radius: 6px; box-sizing: border-box; }
-        
-        .acc-item { background: #f8f9fa; padding: 10px; margin-bottom: 8px; border-radius: 6px; cursor: pointer; font-size: 13px; border: 1px solid transparent; transition: 0.2s; position: relative; }
-        .acc-item:hover { border-color: #5865F2; background: #f0f2ff; }
-        .acc-item.active { background: #eef2ff; border-color: #5865F2; font-weight: bold; }
-        .delete-btn { position: absolute; right: 5px; top: 5px; color: #ff4d4d; border: none; background: none; cursor: pointer; font-size: 16px; width: auto; padding: 0 5px; }
+	<meta charset="UTF-8">
+	<title>MSW 上架助手 - 完整管理版</title>
+	<style>
+		body { font-family: sans-serif; background: #f4f7f9; padding: 20px; display: flex; gap: 20px; justify-content: center; }
+		.main-box { background: white; padding: 25px; border-radius: 12px; box-shadow: 0 4px 15px rgba(0,0,0,0.1); width: 400px; }
+		.account-box { background: #fff; padding: 20px; border-radius: 12px; box-shadow: 0 4px 15px rgba(0,0,0,0.1); width: 250px; }
+		
+		h3 { margin-top: 0; color: #333; border-bottom: 2px solid #eee; padding-bottom: 10px; }
+		label { display: block; font-size: 12px; color: #666; margin-top: 10px; font-weight: bold; }
+		input { width: 100%; padding: 10px; margin-top: 5px; border: 1px solid #ddd; border-radius: 6px; box-sizing: border-box; }
+		
+		.acc-item { background: #f8f9fa; padding: 10px; margin-bottom: 8px; border-radius: 6px; cursor: pointer; font-size: 13px; border: 1px solid transparent; transition: 0.2s; position: relative; }
+		.acc-item:hover { border-color: #5865F2; background: #f0f2ff; }
+		.acc-item.active { background: #eef2ff; border-color: #5865F2; font-weight: bold; }
+		.delete-btn { position: absolute; right: 5px; top: 5px; color: #ff4d4d; border: none; background: none; cursor: pointer; font-size: 16px; width: auto; padding: 0 5px; }
 
-        button { width: 100%; padding: 12px; background: #5865F2; color: white; border: none; border-radius: 6px; cursor: pointer; margin-top: 15px; font-weight: bold; transition: 0.2s; }
-        button:hover { background: #4752c4; }
-        .btn-query { background: #4a5568; margin-top: 10px; }
-        .github-config { background: #fcfcfc; padding: 15px; border: 1px dashed #ccc; border-radius: 8px; margin-top: 15px; }
-        hr { border: 0; border-top: 1px solid #eee; margin: 20px 0; }
-    </style>
+		button { width: 100%; padding: 12px; background: #5865F2; color: white; border: none; border-radius: 6px; cursor: pointer; margin-top: 15px; font-weight: bold; transition: 0.2s; }
+		button:hover { background: #4752c4; }
+		.btn-query { background: #4a5568; margin-top: 10px; }
+		.github-config { background: #fcfcfc; padding: 15px; border: 1px dashed #ccc; border-radius: 8px; margin-top: 15px; }
+		hr { border: 0; border-top: 1px solid #eee; margin: 20px 0; }
+	</style>
 </head>
 <body>
 
-    <!-- 左側帳號列表 -->
-    <div class="account-box">
-        <h3>👥 已存帳號</h3>
-        <div id="account-list"></div>
-        <button onclick="saveCurrentToList()" style="background: #28a745; font-size: 12px;">💾 保存當前 Token</button>
-    </div>
+	<!-- 左側帳號列表 -->
+	<div class="account-box">
+		<h3>👥 已存帳號</h3>
+		<div id="account-list"></div>
+		<button onclick="saveCurrentToList()" style="background: #28a745; font-size: 12px;">💾 保存當前 Token</button>
+	</div>
 
-    <!-- 右側操作面板 -->
-    <div class="main-box">
-        <h3>📦 商品上架</h3>
-        
-        <label>MSW ACCESS TOKEN</label>
-        <input type="password" id="msw_token" placeholder="連線 Nexon API 用" onchange="updateActiveStatus()">
-        
-        <label>MSW USER ID</label>
-        <input type="text" id="msw_uid" placeholder="連線 Nexon API 用" onchange="updateActiveStatus()">
+	<!-- 右側操作面板 -->
+	<div class="main-box">
+		<h3>📦 商品上架</h3>
+		
+		<label>MSW ACCESS TOKEN</label>
+		<input type="password" id="msw_token" placeholder="連線 Nexon API 用" onchange="updateActiveStatus()">
+		
+		<label>MSW USER ID</label>
+		<input type="text" id="msw_uid" placeholder="連線 Nexon API 用" onchange="updateActiveStatus()">
 
-        <div class="github-config">
-            <label>GITHUB TOKEN</label>
-            <input type="password" id="gh_token" placeholder="上傳 data.json 用" onchange="saveGithubSettings()">
-            
-            <div style="display: flex; gap: 8px;">
-                <div style="flex: 1;">
-                    <label>REPO OWNER</label>
-                    <input type="text" id="gh_owner" placeholder="xmasakix" onchange="saveGithubSettings()">
-                </div>
-                <div style="flex: 1;">
-                    <label>REPO NAME</label>
-                    <input type="text" id="gh_repo" placeholder="MSW-ID" onchange="saveGithubSettings()">
-                </div>
-            </div>
-        </div>
+		<div class="github-config">
+			<label>GITHUB TOKEN</label>
+			<input type="password" id="gh_token" placeholder="上傳 data.json 用" onchange="saveGithubSettings()">
+			
+			<div style="display: flex; gap: 8px;">
+				<div style="flex: 1;">
+					<label>REPO OWNER</label>
+					<input type="text" id="gh_owner" placeholder="xmasakix" onchange="saveGithubSettings()">
+				</div>
+				<div style="flex: 1;">
+					<label>REPO NAME</label>
+					<input type="text" id="gh_repo" placeholder="MSW-ID" onchange="saveGithubSettings()">
+				</div>
+			</div>
+		</div>
 
-        <hr>
+		<hr>
 
-        <label>商品 ID</label>
-        <input type="text" id="id" placeholder="輸入 ID 後點查詢">
-        <button class="btn-query" onclick="fetchFromNexon()">🔍 查詢詳情</button>
+		<label>商品 ID</label>
+		<input type="text" id="id" placeholder="輸入 ID 後點查詢">
+		<button class="btn-query" onclick="fetchFromNexon()">🔍 查詢詳情</button>
 
-        <label>名稱 / 價格</label>
-        <div style="display: flex; gap: 10px;">
-            <input type="text" id="keyword" placeholder="名稱">
-            <input type="text" id="wc" placeholder="價格 (如 100wc)" style="width: 120px;">
-        </div>
+		<label>名稱 / 價格</label>
+		<div style="display: flex; gap: 10px;">
+			<input type="text" id="keyword" placeholder="名稱">
+			<input type="text" id="wc" placeholder="價格 (如 100wc)" style="width: 120px;">
+		</div>
 
-        <label>圖片網址</label>
-        <input type="text" id="img">
+		<label>圖片網址</label>
+		<input type="text" id="img">
 
-        <button onclick="uploadToGithub()" style="font-size: 16px;">🚀 立即上架到 GitHub</button>
-        <div id="status" style="text-align:center; margin-top:10px; font-size:12px; color: #555;"></div>
-    </div>
+		<button onclick="uploadToGithub()" style="font-size: 16px;">🚀 立即上架到 GitHub</button>
+		<div id="status" style="text-align:center; margin-top:10px; font-size:12px; color: #555;"></div>
+	</div>
 
-    <script>
-        let accounts = JSON.parse(localStorage.getItem('msw_accounts') || '[]');
+	<script>
+		let accounts = JSON.parse(localStorage.getItem('msw_accounts') || '[]');
 
-        window.onload = () => {
-            // 載入 GitHub 設定
-            document.getElementById('gh_token').value = localStorage.getItem('gh_token') || "";
-            document.getElementById('gh_owner').value = localStorage.getItem('gh_owner') || "xmasakix";
-            document.getElementById('gh_repo').value = localStorage.getItem('gh_repo') || "MSW-ID";
-            
-            renderAccounts();
-            
-            // 自動載入最後一次使用的帳號
-            const lastUid = localStorage.getItem('current_uid');
-            if (lastUid) switchAccount(lastUid);
-        };
+		window.onload = () => {
+			// 載入 GitHub 設定
+			document.getElementById('gh_token').value = localStorage.getItem('gh_token') || "";
+			document.getElementById('gh_owner').value = localStorage.getItem('gh_owner') || "xmasakix";
+			document.getElementById('gh_repo').value = localStorage.getItem('gh_repo') || "MSW-ID";
+			
+			renderAccounts();
+			
+			// 自動載入最後一次使用的帳號
+			const lastUid = localStorage.getItem('current_uid');
+			if (lastUid) switchAccount(lastUid);
+		};
 
-        function renderAccounts() {
-            const list = document.getElementById('account-list');
-            list.innerHTML = accounts.length ? '' : '<p style="color:#999; font-size:12px;">尚無保存帳號</p>';
-            accounts.forEach(acc => {
-                const div = document.createElement('div');
-                div.className = 'acc-item' + (acc.uid === document.getElementById('msw_uid').value ? ' active' : '');
-                div.innerHTML = `
-                    <button class="delete-btn" onclick="deleteAccount(event, '${acc.uid}')">×</button>
-                    👤 ${acc.name}<br>
-                    <small style="color:#999">${acc.uid.substring(0,12)}...</small>
-                `;
-                div.onclick = () => switchAccount(acc.uid);
-                list.appendChild(div);
-            });
-        }
+		function renderAccounts() {
+			const list = document.getElementById('account-list');
+			list.innerHTML = accounts.length ? '' : '<p style="color:#999; font-size:12px;">尚無保存帳號</p>';
+			accounts.forEach(acc => {
+				const div = document.createElement('div');
+				div.className = 'acc-item' + (acc.uid === document.getElementById('msw_uid').value ? ' active' : '');
+				div.innerHTML = `
+					<button class="delete-btn" onclick="deleteAccount(event, '${acc.uid}')">×</button>
+					👤 ${acc.name}<br>
+					<small style="color:#999">${acc.uid.substring(0,12)}...</small>
+				`;
+				div.onclick = () => switchAccount(acc.uid);
+				list.appendChild(div);
+			});
+		}
 
-        function saveGithubSettings() {
-            localStorage.setItem('gh_token', document.getElementById('gh_token').value);
-            localStorage.setItem('gh_owner', document.getElementById('gh_owner').value);
-            localStorage.setItem('gh_repo', document.getElementById('gh_repo').value);
-        }
+		function saveGithubSettings() {
+			localStorage.setItem('gh_token', document.getElementById('gh_token').value);
+			localStorage.setItem('gh_owner', document.getElementById('gh_owner').value);
+			localStorage.setItem('gh_repo', document.getElementById('gh_repo').value);
+		}
 
-        function saveCurrentToList() {
-            const token = document.getElementById('msw_token').value;
-            const uid = document.getElementById('msw_uid').value;
-            if (!token || !uid) return alert("請先填寫 Token 和 UID");
+		function saveCurrentToList() {
+			const token = document.getElementById('msw_token').value;
+			const uid = document.getElementById('msw_uid').value;
+			if (!token || !uid) return alert("請先填寫 Token 和 UID");
 
-            const nickname = prompt("請輸入帳號暱稱:", "帳號 " + uid.substring(uid.length - 4));
-            if (!nickname) return;
+			const nickname = prompt("請輸入帳號暱稱:", "帳號 " + uid.substring(uid.length - 4));
+			if (!nickname) return;
 
-            accounts = accounts.filter(a => a.uid !== uid);
-            accounts.push({ name: nickname, token: token, uid: uid });
-            
-            localStorage.setItem('msw_accounts', JSON.stringify(accounts));
-            renderAccounts();
-        }
+			accounts = accounts.filter(a => a.uid !== uid);
+			accounts.push({ name: nickname, token: token, uid: uid });
+			
+			localStorage.setItem('msw_accounts', JSON.stringify(accounts));
+			renderAccounts();
+		}
 
-        function switchAccount(uid) {
-            const acc = accounts.find(a => a.uid === uid);
-            if (acc) {
-                document.getElementById('msw_token').value = acc.token;
-                document.getElementById('msw_uid').value = acc.uid;
-                localStorage.setItem('current_uid', uid);
-                renderAccounts();
-            }
-        }
+		function switchAccount(uid) {
+			const acc = accounts.find(a => a.uid === uid);
+			if (acc) {
+				document.getElementById('msw_token').value = acc.token;
+				document.getElementById('msw_uid').value = acc.uid;
+				localStorage.setItem('current_uid', uid);
+				renderAccounts();
+			}
+		}
 
-        function deleteAccount(event, uid) {
-            event.stopPropagation();
-            if (!confirm("確定要刪除此帳號嗎？")) return;
-            accounts = accounts.filter(a => a.uid !== uid);
-            localStorage.setItem('msw_accounts', JSON.stringify(accounts));
-            renderAccounts();
-        }
+		function deleteAccount(event, uid) {
+			event.stopPropagation();
+			if (!confirm("確定要刪除此帳號嗎？")) return;
+			accounts = accounts.filter(a => a.uid !== uid);
+			localStorage.setItem('msw_accounts', JSON.stringify(accounts));
+			renderAccounts();
+		}
 
-        async function fetchFromNexon() {
-    const itemId = document.getElementById('id').value.trim();
-    const token = document.getElementById('msw_token').value;
-    const uid = document.getElementById('msw_uid').value;
-    const status = document.getElementById('status');
+		async function fetchFromNexon() {
+			const itemId = document.getElementById('id').value.trim();
+			const token = document.getElementById('msw_token').value;
+			const uid = document.getElementById('msw_uid').value;
+			const status = document.getElementById('status');
 
-    if (!itemId) return alert("請輸入商品 ID");
-    status.innerHTML = "⏳ 正在抓取...";
-    
-    try {
-        const targetUrl = `https://mod-gateway-prd-tokyo-2.nexon.com/mod/v1/avatar/shop/v2/items/${itemId}`;
-        const proxyUrl = `https://corsproxy.io/?${encodeURIComponent(targetUrl)}`;
-        
-        const res = await fetch(proxyUrl, {
-            headers: { 
-                "mod-accesstoken": token, 
-                "mod-user-id": uid 
-            }
-        });
+			if (!itemId) return alert("請輸入商品 ID");
+			status.innerHTML = "⏳ 正在抓取...";
+			
+			try {
+				// 修正 URL 拼接，確保路徑正確
+				const baseUrl = "https://mod-gateway-prd-tokyo-2.nexon.com/mod/v1/avatar/shop/v2/items/";
+				const targetUrl = baseUrl + itemId;
+				const proxyUrl = `https://corsproxy.io/?${encodeURIComponent(targetUrl)}`;
+				
+				const res = await fetch(proxyUrl, {
+					headers: { 
+						"mod-accesstoken": token, 
+						"mod-user-id": uid 
+					}
+				});
 
-        const data = await res.json();
-        console.log("Nexon 原始回傳：", data);
+				if (res.status === 404) {
+					status.innerHTML = `<span style="color:red">❌ 錯誤 404: 找不到該商品 ID</span>`;
+					return;
+				}
 
-        // 檢查 API 是否回傳錯誤訊息
-        if (!res.ok || data.error || data.message) {
-            status.innerHTML = `<span style="color:red">❌ 伺服器錯誤: ${data.message || res.status}</span>`;
-            return;
-        }
+				const data = await res.json();
 
-        // 根據 Nexon API 結構解析資料
-        const item = data.item || data;
+				// 根據 Nexon API 結構動態解析資料
+				const item = data.data || data.item || data;
 
-        if (item && item.itemName) {
-            document.getElementById('keyword').value = item.itemName;
-            document.getElementById('wc').value = (item.itemPrice || 0) + "wc";
-            document.getElementById('img').value = item.itemImageUrl || "";
-            status.innerHTML = "✅ 抓取成功！";
-        } else {
-            status.innerHTML = `<span style="color:orange">⚠️ 找不到資料。回傳內容：${JSON.stringify(data).substring(0, 50)}...</span>`;
-        }
-        
-    } catch (e) {
-        console.error(e);
-        status.innerHTML = "❌ 請求失敗：" + e.message;
-    }
-}
+				if (item && (item.itemName || item.name)) {
+					document.getElementById('keyword').value = item.itemName || item.name;
+					const price = item.itemPrice || item.price || 0;
+					document.getElementById('wc').value = price + "wc";
+					document.getElementById('img').value = item.itemImageUrl || item.thumbnailUrl || "";
+					status.innerHTML = "✅ 抓取成功！";
+				} else {
+					status.innerHTML = `<span style="color:orange">⚠️ 抓取成功但找不到有效商品內容</span>`;
+				}
+				
+			} catch (e) {
+				console.error(e);
+				status.innerHTML = "❌ 請求失敗：" + e.message;
+			}
+		}
 
-        async function uploadToGithub() {
-            const ghToken = document.getElementById('gh_token').value;
-            const owner = document.getElementById('gh_owner').value;
-            const repo = document.getElementById('gh_repo').value;
-            const status = document.getElementById('status');
+		async function uploadToGithub() {
+			const ghToken = document.getElementById('gh_token').value;
+			const owner = document.getElementById('gh_owner').value;
+			const repo = document.getElementById('gh_repo').value;
+			const status = document.getElementById('status');
 
-            if (!ghToken) return alert("請填寫 GITHUB TOKEN");
+			if (!ghToken) return alert("請填寫 GITHUB TOKEN");
 
-            const newItem = {
-                itemId: document.getElementById('id').value,
-                itemName: document.getElementById('keyword').value,
-                itemPrice: document.getElementById('wc').value,
-                itemImageUrl: document.getElementById('img').value,
-                updatedAt: new Date().toISOString()
-            };
+			const newItem = {
+				itemId: document.getElementById('id').value,
+				itemName: document.getElementById('keyword').value,
+				itemPrice: document.getElementById('wc').value,
+				itemImageUrl: document.getElementById('img').value,
+				updatedAt: new Date().toISOString()
+			};
 
-            if (!newItem.itemId || !newItem.itemName) return alert("商品 ID 或名稱不可為空");
+			if (!newItem.itemId || !newItem.itemName) return alert("商品 ID 或名稱不可為空");
 
-            status.innerText = "⏳ 正在處理 GitHub 上傳...";
+			status.innerText = "⏳ 正在處理 GitHub 上傳...";
 
-            try {
-                const filePath = "data.json";
-                const url = `https://api.github.com/repos/${owner}/${repo}/contents/${filePath}`;
+			try {
+				const filePath = "data.json";
+				const url = `https://api.github.com/repos/${owner}/${repo}/contents/${filePath}`;
 
-                // 1. 取得舊檔內容
-                const getRes = await fetch(url, {
-                    headers: { "Authorization": `token ${ghToken}` }
-                });
-                
-                let sha = "";
-                let currentData = [];
-                
-                if (getRes.ok) {
-                    const fileInfo = await getRes.json();
-                    sha = fileInfo.sha;
-                    // 正確解碼 UTF-8 (解決中文亂碼)
-                    currentData = JSON.parse(decodeURIComponent(escape(atob(fileInfo.content))));
-                }
+				// 1. 取得舊檔內容
+				const getRes = await fetch(url, {
+					headers: { "Authorization": `token ${ghToken}` }
+				});
+				
+				let sha = "";
+				let currentData = [];
+				
+				if (getRes.ok) {
+					const fileInfo = await getRes.json();
+					sha = fileInfo.sha;
+					// 正確解碼 UTF-8
+					currentData = JSON.parse(decodeURIComponent(escape(atob(fileInfo.content))));
+				}
 
-                // 2. 更新資料列
-                const index = currentData.findIndex(i => i.itemId === newItem.itemId);
-                if (index > -1) {
-                    currentData[index] = newItem;
-                } else {
-                    currentData.push(newItem);
-                }
+				// 2. 更新資料列
+				const index = currentData.findIndex(i => i.itemId === newItem.itemId);
+				if (index > -1) {
+					currentData[index] = newItem;
+				} else {
+					currentData.push(newItem);
+				}
 
-                // 3. 編碼並推回 GitHub
-                const updatedContent = btoa(unescape(encodeURIComponent(JSON.stringify(currentData, null, 2))));
-                const putRes = await fetch(url, {
-                    method: "PUT",
-                    headers: {
-                        "Authorization": `token ${ghToken}`,
-                        "Content-Type": "application/json"
-                    },
-                    body: JSON.stringify({
-                        message: `🚀 上架商品: ${newItem.itemName}`,
-                        content: updatedContent,
-                        sha: sha
-                    })
-                });
+				// 3. 編碼並推回 GitHub
+				const updatedContent = btoa(unescape(encodeURIComponent(JSON.stringify(currentData, null, 2))));
+				const putRes = await fetch(url, {
+					method: "PUT",
+					headers: {
+						"Authorization": `token ${ghToken}`,
+						"Content-Type": "application/json"
+					},
+					body: JSON.stringify({
+						message: `🚀 上架商品: ${newItem.itemName}`,
+						content: updatedContent,
+						sha: sha
+					})
+				});
 
-                if (putRes.ok) {
-                    status.innerText = "✅ 成功！資料已同步到 GitHub。";
-                } else {
-                    const err = await putRes.json();
-                    status.innerText = "❌ GitHub 錯誤: " + err.message;
-                }
+				if (putRes.ok) {
+					status.innerText = "✅ 成功！資料已同步到 GitHub。";
+				} else {
+					const err = await putRes.json();
+					status.innerText = "❌ GitHub 錯誤: " + err.message;
+				}
 
-            } catch (e) {
-                status.innerText = "❌ 發生錯誤: " + e.message;
-            }
-            async function getAuthFromLocalFile() {
-    try {
-        const response = await fetch('data.json'); // 讀取 Godot 產出的檔案
-        const config = await response.json();
-        const auth = config.auth;
-        
-        console.log("成功獲取同步後的 Token:", auth["mod-accesstoken"]);
-        return auth;
-    } catch (error) {
-        console.error("無法讀取 data.json，請確認 Godot 是否已匯出資料");
-    }
-}
-        }
+			} catch (e) {
+				status.innerText = "❌ 發生錯誤: " + e.message;
+			}
+		}
 
-        function updateActiveStatus() { renderAccounts(); }
-    </script>
+		function updateActiveStatus() { renderAccounts(); }
+	</script>
 </body>
 </html>
