@@ -2,24 +2,25 @@
 <html lang="zh-TW">
 <head>
 	<meta charset="UTF-8">
-	<title>MSW Item Filter</title>
+	<title>MSW 5-Digit ID Manager</title>
 	<style>
 		body { font-family: 'Segoe UI', sans-serif; background: #0f0f12; color: #e0e0e0; display: flex; flex-direction: column; align-items: center; padding: 40px; }
 		.container { width: 100%; max-width: 1000px; }
 		.config-card { background: #1a1a1d; padding: 25px; border-radius: 12px; border: 1px solid #333; margin-bottom: 20px; }
 		.input-group { display: flex; gap: 10px; margin-bottom: 10px; }
 		input { flex: 1; padding: 12px; border: 1px solid #333; border-radius: 8px; background: #252529; color: #fff; outline: none; }
-		button { padding: 10px 20px; border: none; border-radius: 8px; cursor: pointer; font-weight: bold; background: #4e5d6e; color: white; }
-		#item_grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(320px, 1fr)); gap: 20px; }
-		.item-card { background: #1a1a1d; border-radius: 12px; border: 1px solid #333; overflow: hidden; }
-		.img-container { background: #0a0a0c; height: 180px; display: flex; align-items: center; justify-content: center; padding: 10px; }
+		button { padding: 10px 20px; border: none; border-radius: 8px; cursor: pointer; font-weight: bold; background: #4e5d6e; color: white; transition: 0.2s; }
+		button:hover { background: #5a6b7d; }
+		#item_grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); gap: 20px; }
+		.item-card { background: #1a1a1d; border-radius: 12px; border: 1px solid #333; overflow: hidden; display: flex; flex-direction: column; }
+		.img-container { background: #0a0a0c; height: 160px; display: flex; align-items: center; justify-content: center; padding: 10px; }
 		.img-container img { max-width: 100%; max-height: 100%; object-fit: contain; }
-		.info-container { padding: 20px; }
-		.price-text { color: #43b581; font-size: 24px; font-weight: bold; margin-bottom: 15px; }
-		.info-row { display: flex; align-items: center; margin-bottom: 10px; font-size: 13px; color: #b0b0b0; }
-		.info-row span.label { width: 85px; color: #888; }
-		.info-row b { color: #fff; margin-left: 5px; font-family: 'Consolas', monospace; }
-		.btn-sync { background: #5865f2; color: white; border: none; padding: 14px; width: 100%; border-radius: 0 0 12px 12px; cursor: pointer; font-weight: bold; }
+		.info-container { padding: 15px; flex-grow: 1; }
+		.price-badge { background: #43b581; color: white; padding: 4px 10px; border-radius: 6px; font-size: 18px; font-weight: bold; margin-bottom: 12px; display: inline-block; }
+		.info-row { display: flex; align-items: flex-start; margin-bottom: 8px; font-size: 13px; color: #b0b0b0; }
+		.info-row span.label { min-width: 70px; color: #888; }
+		.info-row b { color: #fff; margin-left: 5px; word-break: break-all; }
+		.btn-sync { background: #5865f2; color: white; border: none; padding: 12px; width: 100%; cursor: pointer; font-weight: bold; }
 		#status { margin-top: 10px; font-size: 12px; color: #888; }
 	</style>
 </head>
@@ -27,10 +28,10 @@
 
 <div class="container">
 	<div class="config-card">
-		<h2 style="margin-top:0; font-size:18px;">📦 商品抓取與篩選</h2>
+		<h2 style="margin-top:0; font-size:18px;">📦 商品管理系統 (支援 5 碼 ID)</h2>
 		<div class="input-group">
-			<input type="text" id="target_ppsn" placeholder="輸入目標 PPSN (例如: 20372100006053110)">
-			<button onclick="startFilteredFetch()">開始抓取指定商品</button>
+			<input type="text" id="target_id" placeholder="輸入 5 碼 ID (例如: 12345)">
+			<button onclick="handleSearch()">獲取商品</button>
 		</div>
 		<div id="status"></div>
 	</div>
@@ -46,29 +47,52 @@
 		path: "data.json"
 	};
 
-	// 定義篩選白名單
 	const ALLOWED_TYPES = {
-		"HAIR": "髮型",
-		"HAT": "帽子",
-		"TOP": "上衣",
-		"OVERALL": "大衣",
-		"BOTTOM": "褲裙",
-		"SHOES": "鞋子",
-		"GLOVE": "手套",
-		"CAPE": "披風"
+		"HAIR": "髮型", "HAT": "帽子", "TOP": "上衣", "OVERALL": "大衣",
+		"BOTTOM": "褲裙", "SHOES": "鞋子", "GLOVE": "手套", "CAPE": "披風"
 	};
 
-	async function startFilteredFetch() {
-		const ppsn = document.getElementById('target_ppsn').value.trim();
+	// 核心邏輯：處理搜尋
+	async function handleSearch() {
+		const inputId = document.getElementById('target_id').value.trim();
+		const status = document.getElementById('status');
+		const token = localStorage.getItem('msw_token');
+		const uid = localStorage.getItem('msw_uid');
+
+		if (!inputId || !token) return alert("請輸入 ID 並確認 Token 已設定");
+
+		status.innerHTML = `🔍 正在將 ID ${inputId} 轉換為 PPSN...`;
+
+		try {
+			// Step 1: 透過 profile API 換取完整 PPSN
+			const profileApi = `https://mod-gateway-prd-tokyo-2.nexon.com/mverse/v1/friends/search/profile?profileCode=${inputId}`;
+			const profileRes = await fetch(`https://corsproxy.io/?${encodeURIComponent(profileApi)}`, {
+				headers: { "mod-accesstoken": token, "mod-user-id": uid }
+			});
+			const profileJson = await profileRes.json();
+			
+			const ppsn = profileJson.data?.ppsn;
+
+			if (!ppsn) {
+				status.innerHTML = "❌ 找不到該 ID 對應的用戶，請檢查 ID 是否正確。";
+				return;
+			}
+
+			// Step 2: 使用換到的 PPSN 抓取清單
+			fetchItems(ppsn);
+
+		} catch (err) {
+			status.innerHTML = "❌ 轉換過程中發生錯誤。";
+		}
+	}
+
+	async function fetchItems(ppsn) {
 		const status = document.getElementById('status');
 		const grid = document.getElementById('item_grid');
 		const token = localStorage.getItem('msw_token');
 		const uid = localStorage.getItem('msw_uid');
 
-		if (!ppsn || !token) return alert("請檢查 PPSN 或 Token 是否已設定");
-
-		status.innerHTML = "⏳ 正在獲取裝備清單...";
-		grid.innerHTML = "";
+		status.innerHTML = `⏳ 正在抓取 PPSN: ${ppsn} 的真實價格...`;
 
 		try {
 			const api = `https://mod-gateway-prd-tokyo-2.nexon.com/mverse/v1/shop/mod/inventory/avatars/manage/equip/list/${ppsn}`;
@@ -78,44 +102,46 @@
 			const json = await res.json();
 			const items = json.data?.items || [];
 
-			// 執行篩選邏輯
 			const filteredItems = items.filter(item => ALLOWED_TYPES.hasOwnProperty(item.avatarType));
 
 			if (filteredItems.length === 0) {
-				status.innerHTML = "⚠️ 找不到指定的商品類別 (髮型、大衣、披風等)。";
+				status.innerHTML = "⚠️ 找不到符合類別的商品。";
 				return;
 			}
 
+			grid.innerHTML = "";
 			filteredItems.forEach(item => {
-				const typeName = ALLOWED_TYPES[item.avatarType];
+				const typeLabel = ALLOWED_TYPES[item.avatarType];
+				const realPrice = item.price !== undefined ? item.price : "0"; 
+				
 				const card = document.createElement('div');
 				card.className = 'item-card';
 				card.innerHTML = `
 					<div class="img-container"><img src="${item.itemThumbnailUrl}"></div>
 					<div class="info-container">
-						<div class="info-row"><span class="label">📝 商品名稱</span> <b>${item.itemName}</b></div>
-						<div class="price-text">10 <span style="font-size:12px; color:#888">wc</span></div>
-						<div class="info-row"><span class="label">🆔 商品 ID</span> <b>${item.itemId}</b></div>
-						<div class="info-row"><span class="label">📦 部位</span> <b>${typeName} (${item.avatarType})</b></div>
+						<div class="price-badge">${realPrice} WC</div>
+						<div class="info-row"><span class="label">名稱</span> <b>${item.itemName}</b></div>
+						<div class="info-row"><span class="label">ID</span> <b>${item.itemId}</b></div>
+						<div class="info-row"><span class="label">類別</span> <b>${typeLabel}</b></div>
 					</div>
-					<button class="btn-sync" onclick="syncItem('${item.itemId}', '${item.itemName}', '${item.itemThumbnailUrl}')">🚀 同步至 GitHub</button>
+					<button class="btn-sync" onclick="syncItem('${item.itemId}', '${item.itemName}', '${item.itemThumbnailUrl}', '${realPrice}')">🚀 同步真實資料</button>
 				`;
 				grid.appendChild(card);
 			});
 
-			status.innerHTML = `✅ 已成功過濾並顯示 ${filteredItems.length} 件指定類別商品。`;
-
+			status.innerHTML = `✅ 已成功獲取 ${filteredItems.length} 件商品。`;
 		} catch (err) {
-			status.innerHTML = "❌ 抓取失敗";
+			status.innerHTML = "❌ 抓取商品清單失敗。";
 		}
 	}
 
-	async function syncItem(id, name, img) {
+	async function syncItem(id, name, img, price) {
 		const payload = {
 			keyword: name.replace(/\n|\r/g, "").trim(),
-			wc: "10wc",
+			wc: price + "wc",
 			id: id,
-			img: img
+			img: img,
+			update_time: new Date().toISOString()
 		};
 
 		try {
@@ -132,15 +158,18 @@
 			const idx = list.findIndex(i => i.id === payload.id);
 			if (idx > -1) list[idx] = payload; else list.push(payload);
 
-			const content = btoa(unescape(encodeURIComponent(JSON.stringify(list, null, "\t"))));
-			await fetch(url, {
+			const jsonStr = JSON.stringify(list, null, "\t");
+			const content = btoa(unescape(encodeURIComponent(jsonStr)));
+
+			const putRes = await fetch(url, {
 				method: "PUT",
 				headers: { "Authorization": `token ${GITHUB_CONFIG.token}`, "Content-Type": "application/json" },
-				body: JSON.stringify({ message: `📦 Sync: ${payload.keyword}`, content: content, sha: sha })
+				body: JSON.stringify({ message: `🛒 Sync: ${payload.keyword} (${price}wc)`, content: content, sha: sha })
 			});
-			alert(`🎉 [${payload.keyword}] 同步成功！`);
+
+			if (putRes.ok) alert(`🎉 [${payload.keyword}] 同步成功！`);
 		} catch (err) {
-			alert("同步失敗");
+			alert("同步出錯: " + err.message);
 		}
 	}
 </script>
