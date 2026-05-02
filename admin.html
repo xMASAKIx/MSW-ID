@@ -4,38 +4,38 @@
 	<meta charset="UTF-8">
 	<title>MSW Admin Panel</title>
 	<style>
-		body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background: #0f0f12; color: #e0e0e0; display: flex; justify-content: center; padding: 40px; }
+		body { font-family: 'Segoe UI', sans-serif; background: #0f0f12; color: #e0e0e0; display: flex; justify-content: center; padding: 40px; }
 		.card { background: #1a1a1d; padding: 30px; border-radius: 16px; box-shadow: 0 10px 30px rgba(0,0,0,0.5); width: 450px; border: 1px solid #333; }
 		h2 { margin-top: 0; color: #fff; font-size: 20px; border-bottom: 1px solid #333; padding-bottom: 15px; }
-		label { display: block; margin-top: 15px; font-size: 12px; color: #888; font-weight: 600; text-transform: uppercase; }
-		input { width: 100%; padding: 12px; margin-top: 5px; border: 1px solid #333; border-radius: 8px; background: #252529; color: #fff; box-sizing: border-box; outline: none; }
-		input:focus { border-color: #5865F2; }
+		label { display: block; margin-top: 15px; font-size: 11px; color: #888; font-weight: 600; text-transform: uppercase; }
+		input { width: 100%; padding: 12px; margin-top: 5px; border: 1px solid #333; border-radius: 8px; background: #252529; color: #fff; box-sizing: border-box; outline: none; transition: 0.2s; }
+		input:focus { border-color: #5865F2; background: #2a2a2e; }
 		button { width: 100%; padding: 14px; margin-top: 20px; border: none; border-radius: 8px; cursor: pointer; font-weight: bold; transition: 0.3s; }
-		.btn-fetch { background: #4e5d6e; color: white; }
+		.btn-fetch { background: #4e5d6e; color: white; border: 1px solid #666; }
 		.btn-fetch:hover { background: #5c6d7e; }
-		.btn-sync { background: #5865F2; color: white; font-size: 16px; }
+		.btn-sync { background: #5865F2; color: white; font-size: 16px; box-shadow: 0 4px 15px rgba(88,101,242,0.3); }
 		.btn-sync:hover { background: #4752c4; transform: translateY(-2px); }
-		#status { margin-top: 15px; text-align: center; font-size: 13px; min-height: 20px; }
-		#json_preview { background: #000; color: #9cdcfe; padding: 15px; border-radius: 8px; font-family: 'Consolas', monospace; font-size: 12px; margin-top: 20px; display: none; white-space: pre; border: 1px solid #444; }
+		#status { margin-top: 15px; text-align: center; font-size: 12px; min-height: 20px; color: #aaa; }
+		#json_preview { background: #000; color: #9cdcfe; padding: 15px; border-radius: 8px; font-family: 'Consolas', monospace; font-size: 11px; margin-top: 20px; display: none; white-space: pre; border: 1px solid #444; overflow-x: auto; }
 	</style>
 </head>
 <body>
 
 <div class="card">
-	<h2>📦 MSW 商品上架系統</h2>
+	<h2>📦 MSW 商品上架助手</h2>
 	
 	<label>MSW Access Token</label>
-	<input type="password" id="msw_token" placeholder="mod-accesstoken">
+	<input type="password" id="msw_token" placeholder="貼上 mod-accesstoken">
 	
 	<label>MSW User ID</label>
-	<input type="text" id="msw_uid" placeholder="mod-user-id">
+	<input type="text" id="msw_uid" placeholder="貼上 mod-user-id">
 
 	<hr style="border: 0; border-top: 1px solid #333; margin: 25px 0;">
 
-	<label>商品 ID (ItemId)</label>
+	<label>商品 ID (例如: KW8L9VSIN)</label>
 	<div style="display: flex; gap: 10px;">
-		<input type="text" id="target_id" placeholder="例如: U6YW0FUAQ" style="margin-top:0">
-		<button class="btn-fetch" onclick="fetchNexonData()" style="margin-top:0; width: auto; padding: 0 20px;">抓取</button>
+		<input type="text" id="target_id" placeholder="輸入 ID" style="margin-top:0">
+		<button class="btn-fetch" onclick="fetchNexonData()" style="margin-top:0; width: 100px;">抓取</button>
 	</div>
 
 	<div id="json_preview"></div>
@@ -54,81 +54,77 @@
 </div>
 
 <script>
-	// 初始化：從 localStorage 載入 Token 避免重複輸入
+	// 填入你的 GitHub 設定 (已包含 Token)
+	const GITHUB_CONFIG = {
+		token: "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",
+		owner: "xmasakix",
+		repo: "MSW-ID",
+		path: "data.json"
+	};
+
 	window.onload = () => {
 		document.getElementById('msw_token').value = localStorage.getItem('msw_token') || '';
 		document.getElementById('msw_uid').value = localStorage.getItem('msw_uid') || '';
 	};
 
 	async function fetchNexonData() {
-		const token = document.getElementById('msw_token').value;
-		const uid = document.getElementById('msw_uid').value;
+		const token = document.getElementById('msw_token').value.trim();
+		const uid = document.getElementById('msw_uid').value.trim();
 		const rawId = document.getElementById('target_id').value.trim();
-		
-		// 修正 image_a316c0.png 提到的 404 問題：強制移除所有斜線
-		const cleanId = rawId.replace(/^[\/\\]+|[\/\\]+$/g, '');
+		const cleanId = rawId.replace(/^[\/\\]+|[\/\\]+$/g, ''); // 徹底移除斜線避免截圖中的 %2F 錯誤
 		
 		const status = document.getElementById('status');
 		const preview = document.getElementById('json_preview');
 
-		if (!cleanId || !token) return alert("請輸入 ID 與 Token");
+		if (!cleanId || !token) return alert("請完整填寫 Token 與 ID");
 
-		// 持久化儲存 Token
 		localStorage.setItem('msw_token', token);
 		localStorage.setItem('msw_uid', uid);
 
-		status.innerHTML = "⏳ 正在請求 Nexon API...";
+		status.innerHTML = "⏳ 嘗試連線 Nexon API (v2)...";
 		preview.style.display = "none";
 
-		try {
-			// 構建精確路徑，避免多餘斜線導致 404
-			const apiEndpoint = `https://mod-gateway-prd-tokyo-2.nexon.com/mod/v1/avatar/shop/v2/items/${cleanId}`;
-			const proxyUrl = `https://corsproxy.io/?${encodeURIComponent(apiEndpoint)}`;
+		// 定義要嘗試的路徑清單
+		const versions = ['v2', 'v1'];
+		let foundData = null;
 
-			const response = await fetch(proxyUrl, {
-				headers: {
-					"mod-accesstoken": token,
-					"mod-user-id": uid
+		for (let v of versions) {
+			try {
+				const api = `https://mod-gateway-prd-tokyo-2.nexon.com/mod/v1/avatar/shop/${v}/items/${cleanId}`;
+				const url = `https://corsproxy.io/?${encodeURIComponent(api)}`;
+				
+				const res = await fetch(url, { headers: { "mod-accesstoken": token, "mod-user-id": uid } });
+				
+				if (res.ok) {
+					const json = await res.json();
+					foundData = json.data || json;
+					break;
 				}
-			});
+			} catch (e) { console.error(`嘗試 ${v} 失敗`); }
+		}
 
-			if (!response.ok) throw new Error(`連線失敗 (${response.status})`);
-
-			const resJson = await response.json();
-			const data = resJson.data || resJson; // 兼容不同 API 回傳層級
-
-			// 參考 Godot 代碼邏輯進行資料解析
-			const itemInfo = {
-				"keyword": (data.itemName || data.name || "未命名").replace(/\n|\r/g, "").trim(),
-				"wc": (data.itemPrice || data.slotPrice || 0) + "wc",
+		if (foundData) {
+			const item = {
+				"keyword": (foundData.itemName || foundData.name || "未命名").replace(/\n|\r/g, "").trim(),
+				"wc": (foundData.itemPrice || foundData.slotPrice || 0) + "wc",
 				"id": cleanId,
-				"img": data.itemImageUrl || data.itemThumbnailUrl || data.thumbnail || ""
+				"img": foundData.itemImageUrl || foundData.itemThumbnailUrl || foundData.thumbnail || ""
 			};
 
-			// 填入 UI
-			document.getElementById('res_name').value = itemInfo.keyword;
-			document.getElementById('res_price').value = itemInfo.wc;
-			document.getElementById('res_img').value = itemInfo.img;
+			document.getElementById('res_name').value = item.keyword;
+			document.getElementById('res_price').value = item.wc;
+			document.getElementById('res_img').value = item.img;
 
-			// 顯示格式化 JSON (使用 Tab 縮排)
-			preview.innerText = JSON.stringify(itemInfo, null, "\t");
+			preview.innerText = JSON.stringify(item, null, "\t"); // 使用 Tab 縮排
 			preview.style.display = "block";
-			status.innerHTML = "✅ 資料抓取成功";
-
-		} catch (err) {
-			status.innerHTML = `<span style="color:#ff4d4d">❌ 錯誤: ${err.message}</span>`;
+			status.innerHTML = "✅ 資料抓取成功！";
+		} else {
+			status.innerHTML = `<span style="color:#ff4d4d">❌ 404: 找不到此商品。請檢查 Token 是否有效或 ID 正確。</span>`;
 		}
 	}
 
 	async function syncToGithub() {
 		const status = document.getElementById('status');
-		const GITHUB_CONFIG = {
-			token: "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", // 來自你的 Godot 配置
-			owner: "xmasakix",
-			repo: "MSW-ID",
-			path: "data.json"
-		};
-
 		const payload = {
 			keyword: document.getElementById('res_name').value,
 			wc: document.getElementById('res_price').value,
@@ -136,60 +132,42 @@
 			img: document.getElementById('res_img').value
 		};
 
+		if (!payload.id) return alert("沒有資料可同步");
+
 		status.innerHTML = "🚀 同步至 GitHub 中...";
 
 		try {
 			const url = `https://api.github.com/repos/${GITHUB_CONFIG.owner}/${GITHUB_CONFIG.repo}/contents/${GITHUB_CONFIG.path}`;
-			
-			// 1. 取得現有檔案
-			const getRes = await fetch(url, {
-				headers: { "Authorization": `token ${GITHUB_CONFIG.token}` }
-			});
+			const getRes = await fetch(url, { headers: { "Authorization": `token ${GITHUB_CONFIG.token}` } });
 
 			let sha = "";
-			let currentList = [];
+			let list = [];
 
 			if (getRes.ok) {
-				const fileData = await getRes.json();
-				sha = fileData.sha;
-				currentList = JSON.parse(decodeURIComponent(escape(atob(fileData.content))));
+				const file = await getRes.json();
+				sha = file.sha;
+				list = JSON.parse(decodeURIComponent(escape(atob(file.content))));
 			}
 
-			// 2. 檢查重複並更新
-			const existingIndex = currentList.findIndex(i => i.id === payload.id);
-			if (existingIndex > -1) {
-				currentList[existingIndex] = payload;
-			} else {
-				currentList.push(payload);
-			}
+			// 檢查重複並更新
+			const idx = list.findIndex(i => i.id === payload.id);
+			if (idx > -1) list[idx] = payload; else list.push(payload);
 
-			// 3. 回傳至 GitHub (保持 Tab 縮排)
-			const updatedContent = btoa(unescape(encodeURIComponent(JSON.stringify(currentList, null, "\t"))));
+			// 保持 Tab 縮排儲存
+			const content = btoa(unescape(encodeURIComponent(JSON.stringify(list, null, "\t"))));
 			
 			const putRes = await fetch(url, {
 				method: "PUT",
-				headers: {
-					"Authorization": `token ${GITHUB_CONFIG.token}`,
-					"Content-Type": "application/json"
-				},
-				body: JSON.stringify({
-					message: `Update product: ${payload.keyword}`,
-					content: updatedContent,
-					sha: sha
-				})
+				headers: { "Authorization": `token ${GITHUB_CONFIG.token}`, "Content-Type": "application/json" },
+				body: JSON.stringify({ message: `📦 Update: ${payload.keyword}`, content: content, sha: sha })
 			});
 
-			if (putRes.ok) {
-				status.innerHTML = "🎉 同步成功！GitHub 已更新。";
-			} else {
-				throw new Error("GitHub 回傳錯誤");
-			}
-
+			if (putRes.ok) status.innerHTML = "🎉 GitHub 同步成功！";
+			else throw new Error("傳輸失敗");
 		} catch (err) {
 			status.innerHTML = `<span style="color:#ff4d4d">❌ 同步失敗: ${err.message}</span>`;
 		}
 	}
 </script>
-
 </body>
 </html>
