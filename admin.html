@@ -21,19 +21,19 @@
 		.info-row span.label { min-width: 70px; color: #888; }
 		.info-row b { color: #fff; margin-left: 5px; word-break: break-all; }
 		.btn-sync { background: #5865f2; color: white; border: none; padding: 12px; width: 100%; cursor: pointer; font-weight: bold; }
-		#status { margin-top: 10px; font-size: 12px; color: #888; }
+		#status { margin-top: 10px; font-size: 12px; color: #ff9800; }
 	</style>
 </head>
 <body>
 
 <div class="container">
 	<div class="config-card">
-		<h2 style="margin-top:0; font-size:18px;">📦 商品管理系統 (5 碼 ID 模式)</h2>
+		<h2 style="margin-top:0; font-size:18px;">📦 商品管理系統 (ID 轉換強化版)</h2>
 		<div class="input-group">
-			<input type="text" id="target_id" placeholder="請輸入賣家的 5 碼 ID">
+			<input type="text" id="target_id" placeholder="請輸入 5 碼 ID (例如: 12345)">
 			<button onclick="handleSearch()">獲取真實價格</button>
 		</div>
-		<div id="status"></div>
+		<div id="status">準備就緒</div>
 	</div>
 	<div id="item_grid"></div>
 </div>
@@ -54,35 +54,46 @@
 	async function handleSearch() {
 		const inputId = document.getElementById('target_id').value.trim();
 		const status = document.getElementById('status');
+		const grid = document.getElementById('item_grid');
 		const token = localStorage.getItem('msw_token');
 		const uid = localStorage.getItem('msw_uid');
 
-		if (!inputId || !token) return alert("請輸入 5 碼 ID 並確認已設定 Token");
+		if (!inputId || !token) return alert("請檢查：1. 是否輸入 ID  2. localStorage 是否有 Token");
 
-		status.innerHTML = `🔍 正在搜尋 ID: ${inputId}...`;
+		grid.innerHTML = "";
+		status.innerHTML = `🔍 正在嘗試解析 ID: ${inputId}...`;
 
 		try {
-			// 修改為更精準的搜尋 API 路徑
-			const searchUrl = `https://mod-gateway-prd-tokyo-2.nexon.com/mverse/v1/friends/search?query=${inputId}&page=1&size=1`;
-			const res = await fetch(`https://corsproxy.io/?${encodeURIComponent(searchUrl)}`, {
+			// 嘗試第一種 API: 專用 ProfileCode 轉換接口
+			const profileApi = `https://mod-gateway-prd-tokyo-2.nexon.com/mverse/v1/friends/search/profile?profileCode=${inputId}`;
+			const res = await fetch(`https://corsproxy.io/?${encodeURIComponent(profileApi)}`, {
 				headers: { "mod-accesstoken": token, "mod-user-id": uid }
 			});
-			const json = await res.json();
 			
-			// 從搜尋結果清單中獲取第一個匹配者的 ppsn
-			const foundUser = json.data?.items?.[0];
-			const ppsn = foundUser?.ppsn;
+			const json = await res.json();
+			let ppsn = json.data?.ppsn;
+
+			// 如果第一種失敗，嘗試第二種：通用搜尋接口
+			if (!ppsn) {
+				status.innerHTML = `⚠️ Profile 模式失敗，嘗試搜尋模式...`;
+				const searchApi = `https://mod-gateway-prd-tokyo-2.nexon.com/mverse/v1/friends/search?query=${inputId}&page=1&size=1`;
+				const resSearch = await fetch(`https://corsproxy.io/?${encodeURIComponent(searchApi)}`, {
+					headers: { "mod-accesstoken": token, "mod-user-id": uid }
+				});
+				const jsonSearch = await resSearch.json();
+				ppsn = jsonSearch.data?.items?.[0]?.ppsn;
+			}
 
 			if (!ppsn) {
-				status.innerHTML = `❌ 找不到 ID 為 ${inputId} 的用戶，請確認格式。`;
+				status.innerHTML = `❌ 找不到用戶。請確認該 ID 是否存在，或 Token 是否過期。`;
 				return;
 			}
 
-			status.innerHTML = `✅ 找到用戶: ${foundUser.nickname} (PPSN: ${ppsn})`;
+			status.innerHTML = `✅ 成功轉換 PPSN: ${ppsn}，正在抓取商品...`;
 			fetchItems(ppsn);
 
 		} catch (err) {
-			status.innerHTML = "❌ 搜尋 API 請求失敗，請檢查 Token 是否過期。";
+			status.innerHTML = `❌ 請求發生錯誤: ${err.message}`;
 		}
 	}
 
@@ -103,13 +114,12 @@
 			const filteredItems = items.filter(item => ALLOWED_TYPES.hasOwnProperty(item.avatarType));
 
 			if (filteredItems.length === 0) {
-				status.innerHTML += " | ⚠️ 該賣家目前無上架指定類別商品。";
+				status.innerHTML = `⚠️ 找到賣家但無指定類別商品。 (PPSN: ${ppsn})`;
 				return;
 			}
 
-			grid.innerHTML = "";
 			filteredItems.forEach(item => {
-				const price = item.price ?? 0;
+				const price = item.price ?? "N/A";
 				const card = document.createElement('div');
 				card.className = 'item-card';
 				card.innerHTML = `
@@ -124,8 +134,9 @@
 				`;
 				grid.appendChild(card);
 			});
+			status.innerHTML = `✅ 成功載入 ${filteredItems.length} 件商品。`;
 		} catch (err) {
-			status.innerHTML = "❌ 無法讀取商品清單。";
+			status.innerHTML = "❌ 抓取商品清單失敗。";
 		}
 	}
 
@@ -161,9 +172,9 @@
 				body: JSON.stringify({ message: `Update ${payload.keyword}`, content: content, sha: sha })
 			});
 
-			if (putRes.ok) alert(`🎉 [${payload.keyword}] 以 ${price}WC 同步成功！`);
+			if (putRes.ok) alert(`🎉 同步成功！`);
 		} catch (err) {
-			alert("同步失敗: " + err.message);
+			alert("同步失敗");
 		}
 	}
 </script>
