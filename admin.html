@@ -268,6 +268,18 @@
             } catch (e) {
                 status.innerText = "❌ 發生錯誤: " + e.message;
             }
+            async function getAuthFromLocalFile() {
+    try {
+        const response = await fetch('data.json'); // 讀取 Godot 產出的檔案
+        const config = await response.json();
+        const auth = config.auth;
+        
+        console.log("成功獲取同步後的 Token:", auth["mod-accesstoken"]);
+        return auth;
+    } catch (error) {
+        console.error("無法讀取 data.json，請確認 Godot 是否已匯出資料");
+    }
+}
         }
 
         function updateActiveStatus() { renderAccounts(); }
