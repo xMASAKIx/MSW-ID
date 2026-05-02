@@ -28,9 +28,9 @@
 
 <div class="container">
 	<div class="config-card">
-		<h2 style="margin-top:0; font-size:18px;">📦 商品管理系統 (ID 轉換強化版)</h2>
+		<h2 style="margin-top:0; font-size:18px;">📦 商品管理系統 (POST 搜尋修復版)</h2>
 		<div class="input-group">
-			<input type="text" id="target_id" placeholder="請輸入 5 碼 ID (例如: 12345)">
+			<input type="text" id="target_id" placeholder="請輸入 5 碼 ID (Profile Code)">
 			<button onclick="handleSearch()">獲取真實價格</button>
 		</div>
 		<div id="status">準備就緒</div>
@@ -39,6 +39,7 @@
 </div>
 
 <script>
+	// [已省略 GITHUB_CONFIG 與 ALLOWED_TYPES，請沿用之前的設定]
 	const GITHUB_CONFIG = {
 		token: "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",
 		owner: "xmasakix",
@@ -58,42 +59,45 @@
 		const token = localStorage.getItem('msw_token');
 		const uid = localStorage.getItem('msw_uid');
 
-		if (!inputId || !token) return alert("請檢查：1. 是否輸入 ID  2. localStorage 是否有 Token");
+		if (!inputId || !token) return alert("請輸入 ID 並確認已在 LocalStorage 設定 Token");
 
 		grid.innerHTML = "";
-		status.innerHTML = `🔍 正在嘗試解析 ID: ${inputId}...`;
+		status.innerHTML = `🔍 正在搜尋 5 碼 ID: ${inputId}...`;
 
 		try {
-			// 嘗試第一種 API: 專用 ProfileCode 轉換接口
-			const profileApi = `https://mod-gateway-prd-tokyo-2.nexon.com/mverse/v1/friends/search/profile?profileCode=${inputId}`;
-			const res = await fetch(`https://corsproxy.io/?${encodeURIComponent(profileApi)}`, {
-				headers: { "mod-accesstoken": token, "mod-user-id": uid }
+			// 修改重點：改用 /friends/search 且使用 POST 方法
+			const searchUrl = `https://mod-gateway-prd-tokyo-2.nexon.com/mverse/v1/friends/search`;
+			const res = await fetch(`https://corsproxy.io/?${encodeURIComponent(searchUrl)}`, {
+				method: "POST", // 改為 POST
+				headers: { 
+					"mod-accesstoken": token, 
+					"mod-user-id": uid,
+					"Content-Type": "application/json"
+				},
+				body: JSON.stringify({
+					"query": inputId,
+					"page": 1,
+					"size": 10
+				})
 			});
 			
 			const json = await res.json();
-			let ppsn = json.data?.ppsn;
-
-			// 如果第一種失敗，嘗試第二種：通用搜尋接口
-			if (!ppsn) {
-				status.innerHTML = `⚠️ Profile 模式失敗，嘗試搜尋模式...`;
-				const searchApi = `https://mod-gateway-prd-tokyo-2.nexon.com/mverse/v1/friends/search?query=${inputId}&page=1&size=1`;
-				const resSearch = await fetch(`https://corsproxy.io/?${encodeURIComponent(searchApi)}`, {
-					headers: { "mod-accesstoken": token, "mod-user-id": uid }
-				});
-				const jsonSearch = await resSearch.json();
-				ppsn = jsonSearch.data?.items?.[0]?.ppsn;
-			}
+			
+			// 從回傳的列表中尋找 profileCode 完全符合的項目
+			const items = json.data?.items || [];
+			const foundUser = items.find(u => u.profileCode === inputId) || items[0];
+			const ppsn = foundUser?.ppsn;
 
 			if (!ppsn) {
-				status.innerHTML = `❌ 找不到用戶。請確認該 ID 是否存在，或 Token 是否過期。`;
+				status.innerHTML = `❌ 搜尋回傳異常。API 訊息: ${json.error || '找不到用戶'}`;
 				return;
 			}
 
-			status.innerHTML = `✅ 成功轉換 PPSN: ${ppsn}，正在抓取商品...`;
+			status.innerHTML = `✅ 找到用戶: ${foundUser.nickname} (PPSN: ${ppsn})`;
 			fetchItems(ppsn);
 
 		} catch (err) {
-			status.innerHTML = `❌ 請求發生錯誤: ${err.message}`;
+			status.innerHTML = `❌ 請求失敗: ${err.message}`;
 		}
 	}
 
@@ -114,12 +118,12 @@
 			const filteredItems = items.filter(item => ALLOWED_TYPES.hasOwnProperty(item.avatarType));
 
 			if (filteredItems.length === 0) {
-				status.innerHTML = `⚠️ 找到賣家但無指定類別商品。 (PPSN: ${ppsn})`;
+				status.innerHTML = `⚠️ 找到用戶但無上架商品。 (PPSN: ${ppsn})`;
 				return;
 			}
 
 			filteredItems.forEach(item => {
-				const price = item.price ?? "N/A";
+				const price = item.price ?? 0;
 				const card = document.createElement('div');
 				card.className = 'item-card';
 				card.innerHTML = `
@@ -134,12 +138,13 @@
 				`;
 				grid.appendChild(card);
 			});
-			status.innerHTML = `✅ 成功載入 ${filteredItems.length} 件商品。`;
+			status.innerHTML = `✅ 已載入 ${filteredItems.length} 件商品。`;
 		} catch (err) {
 			status.innerHTML = "❌ 抓取商品清單失敗。";
 		}
 	}
 
+	// [已省略 syncItem 函數，請沿用之前的設定，確保使用 Tab 縮排]
 	async function syncItem(id, name, img, price) {
 		const payload = {
 			keyword: name.replace(/\n|\r/g, "").trim(),
