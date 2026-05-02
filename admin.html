@@ -2,10 +2,10 @@
 <html lang="zh-TW">
 <head>
 	<meta charset="UTF-8">
-	<title>MSW Admin Panel (Final Fix)</title>
+	<title>MSW Admin Panel (Extractor Sync)</title>
 	<style>
 		body { font-family: 'Segoe UI', sans-serif; background: #0f0f12; color: #e0e0e0; display: flex; justify-content: center; padding: 40px; }
-		.card { background: #1a1a1d; padding: 30px; border-radius: 16px; box-shadow: 0 10px 30px rgba(0,0,0,0.5); width: 450px; border: 1px solid #333; }
+		.card { background: #1a1a1d; padding: 30px; border-radius: 16px; box-shadow: 0 10px 30px rgba(0,0,0,0.5); width: 480px; border: 1px solid #333; }
 		h2 { margin-top: 0; color: #fff; font-size: 20px; border-bottom: 1px solid #333; padding-bottom: 15px; }
 		label { display: block; margin-top: 15px; font-size: 11px; color: #888; font-weight: 600; text-transform: uppercase; }
 		input { width: 100%; padding: 12px; margin-top: 5px; border: 1px solid #333; border-radius: 8px; background: #252529; color: #fff; box-sizing: border-box; outline: none; }
@@ -19,20 +19,20 @@
 <body>
 
 <div class="card">
-	<h2>📦 MSW 商品上架助手</h2>
+	<h2>📦 MSW 裝備與商品同步</h2>
 	
 	<label>MSW Access Token</label>
-	<input type="password" id="msw_token">
+	<input type="password" id="msw_token" placeholder="貼上 mod-accesstoken">
 	
-	<label>MSW User ID</label>
-	<input type="text" id="msw_uid">
+	<label>MSW User ID (Extractor ID)</label>
+	<input type="text" id="msw_uid" placeholder="例如: 20372100009302934">
 
 	<hr style="border: 0; border-top: 1px solid #333; margin: 25px 0;">
 
-	<label>商品 ID (ItemId)</label>
+	<label>裝備列表 PPSN (選填)</label>
 	<div style="display: flex; gap: 10px;">
-		<input type="text" id="target_id" placeholder="例如: KW8L9VSIN" style="margin-top:0">
-		<button class="btn-fetch" onclick="fetchNexonData()" style="margin-top:0; width: 100px;">抓取</button>
+		<input type="text" id="target_ppsn" placeholder="例如: 20372100006053110" style="margin-top:0">
+		<button class="btn-fetch" onclick="fetchEquipList()" style="margin-top:0; width: 100px;">抓取列表</button>
 	</div>
 
 	<div id="json_preview"></div>
@@ -46,11 +46,15 @@
 	<label>圖片連結 (Img)</label>
 	<input type="text" id="res_img">
 
-	<button class="btn-sync" onclick="syncToGithub()">🚀 同步至 GitHub</button>
+	<label>商品 ID (ItemId)</label>
+	<input type="text" id="res_id">
+
+	<button class="btn-sync" onclick="syncToGithub()">🚀 同步至 GitHub 倉庫</button>
 	<div id="status"></div>
 </div>
 
 <script>
+	// 根據 User Correction Ledger，GitHub 同步保持 Tab 縮排
 	const GITHUB_CONFIG = {
 		token: "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",
 		owner: "xmasakix",
@@ -63,60 +67,65 @@
 		document.getElementById('msw_uid').value = localStorage.getItem('msw_uid') || '';
 	};
 
-	async function fetchNexonData() {
+	async function fetchEquipList() {
 		const token = document.getElementById('msw_token').value.trim();
 		const uid = document.getElementById('msw_uid').value.trim();
-		const cleanId = document.getElementById('target_id').value.trim().replace(/[^a-zA-Z0-9]/g, '');
+		const ppsn = document.getElementById('target_ppsn').value.trim();
 		
 		const status = document.getElementById('status');
 		const preview = document.getElementById('json_preview');
 
-		if (!cleanId || !token) return alert("請完整填寫 Token 與 ID");
+		if (!token || !ppsn) return alert("請輸入 Token 與 PPSN");
 
 		localStorage.setItem('msw_token', token);
 		localStorage.setItem('msw_uid', uid);
 
-		status.innerHTML = "⏳ 正在請求資料 (不進行路徑編碼)...";
+		status.innerHTML = "⏳ 正在從 MVerse 抓取裝備清單...";
 		preview.style.display = "none";
 
-		// 修正 image_a22ddf.png：移除所有 encodeURIComponent 避免出現 %2F
-		const versions = ['v2', 'v1'];
-		let foundData = null;
+		// 根據日誌提供的最新有效網址結構
+		const api = `https://mod-gateway-prd-tokyo-2.nexon.com/mverse/v1/shop/mod/inventory/avatars/manage/equip/list/${ppsn}`;
+		const url = `https://corsproxy.io/?${api}`;
 
-		for (const v of versions) {
-			try {
-				const api = `https://mod-gateway-prd-tokyo-2.nexon.com/mod/v1/avatar/shop/${v}/items/${cleanId}`;
-				const url = `https://corsproxy.io/?${api}`; // 直接拼接原始網址
-
-				const res = await fetch(url, {
-					headers: { "mod-accesstoken": token, "mod-user-id": uid }
-				});
-
-				if (res.ok) {
-					const json = await res.json();
-					foundData = json.data || json;
-					break;
+		try {
+			const res = await fetch(url, {
+				headers: {
+					"mod-accesstoken": token,
+					"mod-user-id": uid
 				}
-			} catch (e) { console.error(`嘗試 ${v} 失敗`); }
-		}
+			});
 
-		if (foundData) {
-			const item = {
-				"keyword": (foundData.itemName || foundData.name || "未命名").replace(/\n|\r/g, "").trim(),
-				"wc": (foundData.itemPrice || foundData.slotPrice || 0) + "wc",
-				"id": cleanId,
-				"img": foundData.itemImageUrl || foundData.itemThumbnailUrl || foundData.thumbnail || ""
-			};
+			if (!res.ok) throw new Error(`HTTP 錯誤: ${res.status}`);
 
-			document.getElementById('res_name').value = item.keyword;
-			document.getElementById('res_price').value = item.wc;
-			document.getElementById('res_img').value = item.img;
+			const json = await res.json();
+			const items = json.data?.items || [];
 
-			preview.innerText = JSON.stringify(item, null, "\t");
-			preview.style.display = "block";
-			status.innerHTML = "✅ 抓取成功！";
-		} else {
-			status.innerHTML = `<span style="color:#ff4d4d">❌ 404: 商品不存在。請檢查 ID 或 Token 權限。</span>`;
+			if (items.length > 0) {
+				// 抓取列表中的第一個裝備作為範例
+				const firstItem = items[0];
+				
+				// 根據日誌中的欄位解析資料
+				const result = {
+					"keyword": firstItem.itemName.replace(/\n|\r/g, "").trim(),
+					"wc": "0wc", // 裝備清單 API 通常不帶價格，需手動修改
+					"id": firstItem.itemId,
+					"img": firstItem.itemThumbnailUrl || ""
+				};
+
+				document.getElementById('res_name').value = result.keyword;
+				document.getElementById('res_price').value = result.wc;
+				document.getElementById('res_img').value = result.img;
+				document.getElementById('res_id').value = result.id;
+
+				preview.innerText = JSON.stringify(items, null, "\t"); // 使用 Tab 縮排符合要求
+				preview.style.display = "block";
+				status.innerHTML = `✅ 成功抓取 ${items.length} 件裝備`;
+			} else {
+				status.innerHTML = "❌ 清單中沒有裝備";
+			}
+
+		} catch (err) {
+			status.innerHTML = `<span style="color:#ff4d4d">❌ 抓取失敗: ${err.message}</span>`;
 		}
 	}
 
@@ -125,11 +134,13 @@
 		const payload = {
 			keyword: document.getElementById('res_name').value,
 			wc: document.getElementById('res_price').value,
-			id: document.getElementById('target_id').value.trim(),
+			id: document.getElementById('res_id').value.trim(),
 			img: document.getElementById('res_img').value
 		};
 
-		status.innerHTML = "🚀 同步至 GitHub...";
+		if (!payload.id) return alert("請先抓取資料或手動輸入 ID");
+
+		status.innerHTML = "🚀 同步至 GitHub 中...";
 
 		try {
 			const url = `https://api.github.com/repos/${GITHUB_CONFIG.owner}/${GITHUB_CONFIG.repo}/contents/${GITHUB_CONFIG.path}`;
@@ -141,24 +152,26 @@
 			if (getRes.ok) {
 				const file = await getRes.json();
 				sha = file.sha;
+				// 處理中文編碼
 				list = JSON.parse(decodeURIComponent(escape(atob(file.content))));
 			}
 
 			const idx = list.findIndex(i => i.id === payload.id);
 			if (idx > -1) list[idx] = payload; else list.push(payload);
 
+			// 使用 Tab 縮排儲存
 			const content = btoa(unescape(encodeURIComponent(JSON.stringify(list, null, "\t"))));
 			
 			const putRes = await fetch(url, {
 				method: "PUT",
 				headers: { "Authorization": `token ${GITHUB_CONFIG.token}`, "Content-Type": "application/json" },
-				body: JSON.stringify({ message: `📦 Sync: ${payload.keyword}`, content: content, sha: sha })
+				body: JSON.stringify({ message: `📦 Update: ${payload.keyword}`, content: content, sha: sha })
 			});
 
-			if (putRes.ok) status.innerHTML = "🎉 GitHub 同步完成。";
+			if (putRes.ok) status.innerHTML = "🎉 GitHub 資料更新成功！";
 			else throw new Error("GitHub 寫入失敗");
 		} catch (err) {
-			status.innerHTML = `<span style="color:#ff4d4d">❌ 錯誤: ${err.message}</span>`;
+			status.innerHTML = `<span style="color:#ff4d4d">❌ 同步錯誤: ${err.message}</span>`;
 		}
 	}
 </script>
