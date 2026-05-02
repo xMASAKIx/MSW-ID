@@ -2,26 +2,36 @@
 <html lang="zh-TW">
 <head>
 	<meta charset="UTF-8">
-	<title>MSW Admin Panel</title>
+	<title>MSW Admin Panel - Card View</title>
 	<style>
 		body { font-family: 'Segoe UI', sans-serif; background: #0f0f12; color: #e0e0e0; display: flex; flex-direction: column; align-items: center; padding: 40px; }
-		.container { width: 100%; max-width: 1000px; }
+		.container { width: 100%; max-width: 900px; }
 		.config-card { background: #1a1a1d; padding: 25px; border-radius: 12px; border: 1px solid #333; margin-bottom: 20px; }
 		h2 { margin: 0 0 15px 0; font-size: 18px; color: #fff; }
-		.input-group { display: flex; gap: 10px; margin-bottom: 10px; }
-		input { flex: 1; padding: 12px; border: 1px solid #333; border-radius: 8px; background: #252529; color: #fff; outline: none; }
-		button { padding: 10px 20px; border: none; border-radius: 8px; cursor: pointer; font-weight: bold; transition: 0.3s; }
-		.btn-fetch { background: #4e5d6e; color: white; }
-		#item_grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(320px, 1fr)); gap: 20px; }
+		
+		/* 輸入框樣式 */
+		.input-group { display: grid; grid-template-columns: 1fr 1fr; gap: 15px; margin-bottom: 15px; }
+		label { display: block; font-size: 11px; color: #888; font-weight: 600; margin-bottom: 5px; }
+		input { width: 100%; padding: 10px; border: 1px solid #333; border-radius: 6px; background: #252529; color: #fff; box-sizing: border-box; }
+		
+		/* 網格佈局 */
+		#item_grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); gap: 20px; margin-top: 20px; }
+		
+		/* 圖片中的卡片樣式 */
 		.item-card { background: #1a1a1d; border-radius: 12px; border: 1px solid #333; overflow: hidden; display: flex; flex-direction: column; }
 		.img-container { background: #0a0a0c; height: 180px; display: flex; align-items: center; justify-content: center; padding: 10px; }
 		.img-container img { max-width: 100%; max-height: 100%; object-fit: contain; }
-		.info-container { padding: 20px; flex-grow: 1; }
-		.price-text { color: #43b581; font-size: 24px; font-weight: bold; margin-bottom: 15px; }
-		.info-row { display: flex; align-items: center; margin-bottom: 10px; font-size: 13px; color: #b0b0b0; }
-		.info-row span.label { width: 85px; color: #888; }
-		.info-row b { color: #fff; margin-left: 5px; font-family: 'Consolas', monospace; }
-		.btn-sync { background: #5865f2; color: white; border: none; padding: 14px; width: 100%; border-radius: 0 0 12px 12px; cursor: pointer; font-weight: bold; }
+		
+		.info-container { padding: 15px; font-size: 13px; }
+		.info-row { display: flex; align-items: center; margin-bottom: 8px; color: #b0b0b0; }
+		.info-row b { color: #fff; margin-left: auto; font-weight: 500; }
+		.price-text { color: #43b581; font-size: 20px; font-weight: bold; margin: 10px 0; }
+		.price-unit { font-size: 12px; color: #888; margin-left: 5px; }
+		
+		.btn-sync { background: #5865f2; color: white; border: none; padding: 12px; width: 100%; border-radius: 6px; cursor: pointer; font-weight: bold; transition: 0.2s; }
+		.btn-sync:hover { background: #4752c4; }
+		
+		.btn-fetch { background: #4e5d6e; color: white; border: none; padding: 10px 20px; border-radius: 6px; cursor: pointer; }
 		#status { margin-top: 10px; font-size: 12px; color: #888; }
 	</style>
 </head>
@@ -29,14 +39,26 @@
 
 <div class="container">
 	<div class="config-card">
-		<h2>👤 查詢設定 (自動獲取作者)</h2>
+		<h2>⚙️ API 設定</h2>
 		<div class="input-group">
-			<input type="text" id="target_ppsn" placeholder="輸入目標 PPSN (例如: 20372100006053110)">
-			<button class="btn-fetch" onclick="startAutoFetch()">開始自動抓取</button>
+			<div>
+				<label>MSW Access Token</label>
+				<input type="password" id="msw_token">
+			</div>
+			<div>
+				<label>MSW User ID</label>
+				<input type="text" id="msw_uid">
+			</div>
+		</div>
+		<label>裝備列表 PPSN</label>
+		<div style="display: flex; gap: 10px;">
+			<input type="text" id="target_ppsn" placeholder="例如: 20372100006053110">
+			<button class="btn-fetch" onclick="fetchEquipList()">抓取裝備</button>
 		</div>
 		<div id="status"></div>
 	</div>
 
+	<!-- 這裡會動態生成像圖片那樣的一格一格 -->
 	<div id="item_grid"></div>
 </div>
 
@@ -48,71 +70,61 @@
 		path: "data.json"
 	};
 
-	async function startAutoFetch() {
+	window.onload = () => {
+		document.getElementById('msw_token').value = localStorage.getItem('msw_token') || '';
+		document.getElementById('msw_uid').value = localStorage.getItem('msw_uid') || '';
+	};
+
+	async function fetchEquipList() {
+		const token = document.getElementById('msw_token').value.trim();
+		const uid = document.getElementById('msw_uid').value.trim();
 		const ppsn = document.getElementById('target_ppsn').value.trim();
-		const status = document.getElementById('status');
 		const grid = document.getElementById('item_grid');
-		const token = localStorage.getItem('msw_token');
-		const uid = localStorage.getItem('msw_uid');
+		const status = document.getElementById('status');
 
-		if (!ppsn || !token) {
-			status.innerHTML = "❌ 錯誤：請確認 PPSN 已填寫，並確認 Token 已存於 localStorage。";
-			return;
-		}
+		if (!token || !ppsn) return alert("請輸入 Token 與 PPSN");
 
-		status.innerHTML = "⏳ 正在嘗試獲取作者與裝備資訊...";
+		localStorage.setItem('msw_token', token);
+		localStorage.setItem('msw_uid', uid);
+
+		status.innerHTML = "⏳ 正在獲取裝備清單...";
 		grid.innerHTML = "";
 
-		try {
-			// 1. 二次查詢：獲取作者暱稱
-			const profileApi = `https://mod-gateway-prd-tokyo-2.nexon.com/mod/v1/friends/search/ppsn?ppsn=${ppsn}`;
-			const profileRes = await fetch(`https://corsproxy.io/?${encodeURIComponent(profileApi)}`, {
-				headers: { "mod-accesstoken": token, "mod-user-id": uid }
-			});
-			const profileJson = await profileRes.json();
-			
-			let authorName = "未知作者";
-			if (profileJson.data && profileJson.data.result && profileJson.data.result.length > 0) {
-				authorName = profileJson.data.result[0].profileName;
-			} else {
-				authorName = `User_${ppsn.slice(-5)}`;
-			}
+		const api = `https://mod-gateway-prd-tokyo-2.nexon.com/mverse/v1/shop/mod/inventory/avatars/manage/equip/list/${ppsn}`;
+		const url = `https://corsproxy.io/?${api}`;
 
-			// 2. 獲取裝備清單
-			const equipApi = `https://mod-gateway-prd-tokyo-2.nexon.com/mverse/v1/shop/mod/inventory/avatars/manage/equip/list/${ppsn}`;
-			const equipRes = await fetch(`https://corsproxy.io/?${encodeURIComponent(equipApi)}`, {
-				headers: { "mod-accesstoken": token, "mod-user-id": uid }
-			});
-			const equipJson = await equipRes.json();
-			const items = equipJson.data?.items || [];
+		try {
+			const res = await fetch(url, { headers: { "mod-accesstoken": token, "mod-user-id": uid } });
+			const json = await res.json();
+			const items = json.data?.items || [];
 
 			if (items.length === 0) {
-				status.innerHTML = `⚠️ [${authorName}] 目前沒有穿戴裝備。`;
+				status.innerHTML = "❌ 找不到任何裝備";
 				return;
 			}
 
-			// 3. 渲染卡片
 			items.forEach(item => {
 				const card = document.createElement('div');
 				card.className = 'item-card';
 				card.innerHTML = `
-					<div class="img-container"><img src="${item.itemThumbnailUrl}"></div>
-					<div class="info-container">
-						<div class="info-row"><span class="label">📝 商品名稱</span> <b>${item.itemName}</b></div>
-						<div class="price-text">10 <span style="font-size:12px; color:#888">wc</span></div>
-						<div class="info-row"><span class="label">👤 作者</span> <b>${authorName}</b></div>
-						<div class="info-row"><span class="label">🆔 商品 ID</span> <b>${item.itemId}</b></div>
-						<div class="info-row"><span class="label">📦 部位</span> <b>${item.avatarType || 'EQUIP'}</b></div>
+					<div class="img-container">
+						<img src="${item.itemThumbnailUrl}" alt="icon">
 					</div>
-					<button class="btn-sync" onclick="syncItem('${item.itemId}', '${item.itemName}', '${item.itemThumbnailUrl}')">🚀 同步至 GitHub</button>
+					<div class="info-container">
+						<div class="info-row">📝 商品名稱 <b>${item.itemName}</b></div>
+						<div class="price-text">10 <span class="price-unit">wc</span></div>
+						<div class="info-row">🆔 商品 ID <b>${item.itemId}</b></div>
+						<div class="info-row">📦 部位 <b>${item.avatarType || 'UNKNOWN'}</b></div>
+						<button class="btn-sync" onclick="syncItem('${item.itemId}', '${item.itemName}', '${item.itemThumbnailUrl}')">🚀 同步至 GitHub</button>
+					</div>
 				`;
 				grid.appendChild(card);
 			});
 
-			status.innerHTML = `✅ 成功載入作者 [${authorName}] 的 ${items.length} 個項目`;
+			status.innerHTML = `✅ 成功載入 ${items.length} 個項目`;
 
 		} catch (err) {
-			status.innerHTML = `<span style="color:#ff4d4d">❌ 查詢失敗，請檢查網路或 Token。</span>`;
+			status.innerHTML = `<span style="color:#ff4d4d">❌ 錯誤: ${err.message}</span>`;
 		}
 	}
 
@@ -124,10 +136,14 @@
 			img: img
 		};
 
+		console.log("正在同步:", payload);
+		
 		try {
 			const url = `https://api.github.com/repos/${GITHUB_CONFIG.owner}/${GITHUB_CONFIG.repo}/contents/${GITHUB_CONFIG.path}`;
 			const getRes = await fetch(url, { headers: { "Authorization": `token ${GITHUB_CONFIG.token}` } });
-			let sha = "", list = [];
+
+			let sha = "";
+			let list = [];
 
 			if (getRes.ok) {
 				const file = await getRes.json();
@@ -139,17 +155,20 @@
 			if (idx > -1) list[idx] = payload; else list.push(payload);
 
 			const content = btoa(unescape(encodeURIComponent(JSON.stringify(list, null, "\t"))));
+			
 			const putRes = await fetch(url, {
 				method: "PUT",
 				headers: { "Authorization": `token ${GITHUB_CONFIG.token}`, "Content-Type": "application/json" },
 				body: JSON.stringify({ message: `📦 Sync: ${payload.keyword}`, content: content, sha: sha })
 			});
 
-			if (putRes.ok) alert(`🎉 [${payload.keyword}] 同步成功！`);
+			if (putRes.ok) alert(`🎉 ${payload.keyword} 同步成功！`);
+			else alert("❌ GitHub 更新失敗");
 		} catch (err) {
-			alert("同步失敗: " + err.message);
+			alert(`❌ 錯誤: ${err.message}`);
 		}
 	}
 </script>
+
 </body>
 </html>
