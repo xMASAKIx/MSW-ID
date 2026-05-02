@@ -2,7 +2,7 @@
 <html lang="zh-TW">
 <head>
 	<meta charset="UTF-8">
-	<title>MSW Item Manager - PPSN Mode</title>
+	<title>MSW 商品管理員 - 真實價格同步版</title>
 	<style>
 		body { font-family: 'Segoe UI', sans-serif; background: #0f0f12; color: #e0e0e0; display: flex; flex-direction: column; align-items: center; padding: 40px; }
 		.container { width: 100%; max-width: 1000px; }
@@ -20,7 +20,7 @@
 		.info-row { display: flex; align-items: flex-start; margin-bottom: 8px; font-size: 13px; color: #b0b0b0; }
 		.info-row span.label { min-width: 70px; color: #888; }
 		.info-row b { color: #fff; margin-left: 5px; word-break: break-all; }
-		.btn-sync { background: #5865f2; color: white; border: none; padding: 12px; width: 100%; cursor: pointer; font-weight: bold; transition: 0.2s; }
+		.btn-sync { background: #5865f2; color: white; border: none; padding: 12px; width: 100%; cursor: pointer; font-weight: bold; }
 		.btn-sync:hover { background: #4752c4; }
 		#status { margin-top: 10px; font-size: 12px; color: #888; }
 	</style>
@@ -29,14 +29,13 @@
 
 <div class="container">
 	<div class="config-card">
-		<h2 style="margin-top:0; font-size:18px;">📦 商品同步系統 (PPSN 模式)</h2>
+		<h2 style="margin-top:0; font-size:18px;">📦 MSW 商品真實價格同步</h2>
 		<div class="input-group">
-			<input type="text" id="target_ppsn" placeholder="輸入目標 PPSN (例如: 20372100006053110)">
+			<input type="text" id="target_ppsn" placeholder="請輸入目標作者 PPSN">
 			<button onclick="fetchItems()">抓取清單</button>
 		</div>
-		<div id="status">準備就緒</div>
+		<div id="status">請確保 localStorage 已填入有效的 Token 與 UID</div>
 	</div>
-
 	<div id="item_grid"></div>
 </div>
 
@@ -49,28 +48,29 @@
 		path: "data.json"
 	};
 
-	// 篩選白名單
+	// 允許過濾的類型
 	const ALLOWED_TYPES = {
 		"HAIR": "髮型", "HAT": "帽子", "TOP": "上衣", "OVERALL": "大衣",
 		"BOTTOM": "褲裙", "SHOES": "鞋子", "GLOVE": "手套", "CAPE": "披風"
 	};
 
-	// 抓取商品清單
 	async function fetchItems() {
 		const ppsn = document.getElementById('target_ppsn').value.trim();
 		const status = document.getElementById('status');
 		const grid = document.getElementById('item_grid');
 		
-		// 從 LocalStorage 獲取憑證
+		// 從瀏覽器快取讀取必要的認證資料
 		const token = localStorage.getItem('msw_token');
 		const uid = localStorage.getItem('msw_uid');
 
-		if (!ppsn || !token) return alert("請輸入 PPSN 並確認 localStorage 已設定 token");
+		if (!ppsn) return alert("請輸入 PPSN");
+		if (!token || !uid) return alert("錯誤：找不到 Token 或 UID，請先在 Extension 或 Console 設定");
 
-		status.innerHTML = "⏳ 正在抓取...";
+		status.innerHTML = "⏳ 正在分析商店商品與價格資訊...";
 		grid.innerHTML = "";
 
 		try {
+			// 調用 MSW 官方 API 取得特定作者的商品
 			const api = `https://mod-gateway-prd-tokyo-2.nexon.com/mverse/v1/shop/mod/inventory/avatars/manage/equip/list/${ppsn}`;
 			const res = await fetch(`https://corsproxy.io/?${encodeURIComponent(api)}`, {
 				headers: { "mod-accesstoken": token, "mod-user-id": uid }
@@ -78,86 +78,85 @@
 			const json = await res.json();
 			const items = json.data?.items || [];
 
-			// 過濾指定部位
 			const filteredItems = items.filter(item => ALLOWED_TYPES.hasOwnProperty(item.avatarType));
 
 			if (filteredItems.length === 0) {
-				status.innerHTML = "⚠️ 找不到符合類別的商品。";
+				status.innerHTML = "⚠️ 找不到符合部位的商品。";
 				return;
 			}
 
 			filteredItems.forEach(item => {
-				const price = item.price ?? 0; // 抓取真實價格
+				// 核心：抓取真實價格 (優先檢查多個欄位避免為 0)
+				const realPrice = item.price || item.salePrice || item.discountPrice || 0;
+				
 				const card = document.createElement('div');
 				card.className = 'item-card';
 				card.innerHTML = `
 					<div class="img-container"><img src="${item.itemThumbnailUrl}"></div>
 					<div class="info-container">
-						<div class="price-badge">${price} WC</div>
+						<div class="price-badge">${realPrice} WC</div>
 						<div class="info-row"><span class="label">名稱</span> <b>${item.itemName}</b></div>
 						<div class="info-row"><span class="label">ID</span> <b>${item.itemId}</b></div>
-						<div class="info-row"><span class="label">部位</span> <b>${ALLOWED_TYPES[item.avatarType]}</b></div>
+						<div class="info-row"><span class="label">類型</span> <b>${ALLOWED_TYPES[item.avatarType]}</b></div>
 					</div>
-					<button class="btn-sync" onclick="syncToGithub('${item.itemId}', '${item.itemName}', '${item.itemThumbnailUrl}', '${price}')">🚀 同步並發送通知</button>
+					<button class="btn-sync" onclick="syncToGithub('${item.itemId}', '${item.itemName}', '${item.itemThumbnailUrl}', '${realPrice}')">🚀 同步至 GitHub</button>
 				`;
 				grid.appendChild(card);
 			});
 
-			status.innerHTML = `✅ 已載入 ${filteredItems.length} 件商品。`;
+			status.innerHTML = `✅ 成功載入 ${filteredItems.length} 件商品。`;
 		} catch (err) {
-			status.innerHTML = "❌ 抓取失敗，請檢查 Token 是否過期。";
+			console.error(err);
+			status.innerHTML = "❌ 抓取失敗，可能是 Token 過期或網路錯誤。";
 		}
 	}
 
-	// 同步至 GitHub
 	async function syncToGithub(id, name, img, price) {
 		const payload = {
 			keyword: name.replace(/\n|\r/g, "").trim(),
-			wc: price + "wc",
+			wc: price + "wc", // 格式化為 Godot 識別的 wc 標籤
 			id: id,
 			img: img,
-			ts: Date.now() // 加入時間戳記確保 content 變動
+			ts: Date.now() // 用於強制觸發變動通知
 		};
 
 		try {
 			const url = `https://api.github.com/repos/${GITHUB_CONFIG.owner}/${GITHUB_CONFIG.repo}/contents/${GITHUB_CONFIG.path}`;
-			
-			// 1. 獲取現有 SHA
 			const getRes = await fetch(url, { headers: { "Authorization": `token ${GITHUB_CONFIG.token}` } });
 			let sha = "", list = [];
 
 			if (getRes.ok) {
 				const file = await getRes.json();
 				sha = file.sha;
+				// 處理中文與特殊符號編碼
 				list = JSON.parse(decodeURIComponent(escape(atob(file.content))));
 			}
 
-			// 2. 更新資料 (相同 ID 覆蓋)
+			// 更新現有商品或新增商品
 			const idx = list.findIndex(i => i.id === payload.id);
 			if (idx > -1) list[idx] = payload; else list.push(payload);
 
-			// 3. 轉回 Base64 並使用 Tab 縮排
+			// 使用 Tab 鍵縮排 (遵照使用者編輯習慣)
 			const jsonStr = JSON.stringify(list, null, "\t");
 			const content = btoa(unescape(encodeURIComponent(jsonStr)));
 
-			// 4. 推送更新
 			const putRes = await fetch(url, {
 				method: "PUT",
 				headers: { "Authorization": `token ${GITHUB_CONFIG.token}`, "Content-Type": "application/json" },
 				body: JSON.stringify({ 
-					message: `📦 Sync: ${payload.keyword} (${price}wc)`, 
+					message: `📦 Update: ${payload.keyword} (真實價格: ${price}WC)`, 
 					content: content, 
 					sha: sha 
 				})
 			});
 
 			if (putRes.ok) {
-				alert(`🎉 [${payload.keyword}] 同步成功！`);
+				alert(`🎉 同步成功！\n商品：${name}\n價格：${price} WC`);
 			} else {
-				alert("GitHub 寫入失敗，請檢查 Token。");
+				alert("GitHub 寫入失敗，請檢查 Token 權限。");
 			}
 		} catch (err) {
-			alert("發生同步錯誤。");
+			alert("發生同步錯誤：" + err.message);
 		}
 	}
 </script>
