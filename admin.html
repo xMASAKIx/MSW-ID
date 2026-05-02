@@ -2,147 +2,147 @@
 <html lang="zh-TW">
 <head>
 	<meta charset="UTF-8">
-	<title>MSW Admin Helper - Fix Encoding</title>
+	<title>MSW Item Filter</title>
 	<style>
-		body { font-family: 'Segoe UI', sans-serif; background-color: #0e0e10; color: #efeff1; margin: 0; padding: 20px; display: flex; flex-direction: column; align-items: center; }
+		body { font-family: 'Segoe UI', sans-serif; background: #0f0f12; color: #e0e0e0; display: flex; flex-direction: column; align-items: center; padding: 40px; }
 		.container { width: 100%; max-width: 1000px; }
-
-		.config-section { background: #18181b; padding: 20px; border-radius: 12px; border: 1px solid #2d2d30; margin-bottom: 20px; width: 100%; box-sizing: border-box; }
-		.input-row { display: flex; gap: 10px; margin-bottom: 10px; }
-		input { background: #0e0e10; border: 1px solid #3f3f44; color: #fff; padding: 10px; border-radius: 6px; flex: 1; outline: none; }
-		button { background: #5865f2; color: white; border: none; padding: 10px 20px; border-radius: 6px; cursor: pointer; font-weight: bold; }
-
-		#profile_card { background: #18181b; border: 1px solid #2d2d30; padding: 25px; border-radius: 15px; margin-bottom: 25px; display: none; align-items: center; gap: 25px; }
-		.avatar-frame { background: rgba(0,0,0,0.4); padding: 10px; border-radius: 10px; }
-		.avatar-img { height: 160px; image-rendering: pixelated; }
-		.user-meta h2 { margin: 0; font-size: 26px; color: #fff; }
-		.ppsn-text { color: #888; font-family: monospace; margin-top: 5px; }
-
-		#item_grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 20px; width: 100%; }
-		.item-card { background: #18181b; border: 1px solid #2d2d30; border-radius: 12px; overflow: hidden; display: flex; flex-direction: column; transition: transform 0.2s; }
-		.item-card:hover { transform: translateY(-5px); border-color: #5865f2; }
-		.preview-box { background: #000; height: 180px; display: flex; align-items: center; justify-content: center; position: relative; }
-		.preview-box img { max-width: 140px; max-height: 140px; image-rendering: pixelated; }
-		.price-tag { position: absolute; top: 12px; left: 12px; background: #43b581; color: white; padding: 3px 10px; border-radius: 5px; font-size: 12px; font-weight: bold; }
-		.item-info { padding: 15px; flex-grow: 1; }
-		.sync-footer { background: #2f3136; border: none; color: #fff; padding: 12px; cursor: pointer; font-weight: bold; display: flex; align-items: center; justify-content: center; gap: 8px; }
-
-		#log { margin-bottom: 15px; font-size: 14px; color: #adadb8; }
+		.config-card { background: #1a1a1d; padding: 25px; border-radius: 12px; border: 1px solid #333; margin-bottom: 20px; }
+		.input-group { display: flex; gap: 10px; margin-bottom: 10px; }
+		input { flex: 1; padding: 12px; border: 1px solid #333; border-radius: 8px; background: #252529; color: #fff; outline: none; }
+		button { padding: 10px 20px; border: none; border-radius: 8px; cursor: pointer; font-weight: bold; background: #4e5d6e; color: white; }
+		#item_grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(320px, 1fr)); gap: 20px; }
+		.item-card { background: #1a1a1d; border-radius: 12px; border: 1px solid #333; overflow: hidden; }
+		.img-container { background: #0a0a0c; height: 180px; display: flex; align-items: center; justify-content: center; padding: 10px; }
+		.img-container img { max-width: 100%; max-height: 100%; object-fit: contain; }
+		.info-container { padding: 20px; }
+		.price-text { color: #43b581; font-size: 24px; font-weight: bold; margin-bottom: 15px; }
+		.info-row { display: flex; align-items: center; margin-bottom: 10px; font-size: 13px; color: #b0b0b0; }
+		.info-row span.label { width: 85px; color: #888; }
+		.info-row b { color: #fff; margin-left: 5px; font-family: 'Consolas', monospace; }
+		.btn-sync { background: #5865f2; color: white; border: none; padding: 14px; width: 100%; border-radius: 0 0 12px 12px; cursor: pointer; font-weight: bold; }
+		#status { margin-top: 10px; font-size: 12px; color: #888; }
 	</style>
 </head>
 <body>
 
 <div class="container">
-	<div class="config-section">
-		<div id="log">請輸入有效 Token 後點擊執行</div>
-		<div class="input-row">
-			<input type="text" id="tk_val" placeholder="mod-accesstoken (Bearer ...)">
-			<button onclick="saveAndRun()">執行並儲存</button>
+	<div class="config-card">
+		<h2 style="margin-top:0; font-size:18px;">📦 商品抓取與篩選</h2>
+		<div class="input-group">
+			<input type="text" id="target_ppsn" placeholder="輸入目標 PPSN (例如: 20372100006053110)">
+			<button onclick="startFilteredFetch()">開始抓取指定商品</button>
 		</div>
-		<div class="input-row">
-			<input type="text" id="target_ppsn" placeholder="目標 PPSN" value="20372100004991307">
-		</div>
-	</div>
-
-	<div id="profile_card">
-		<div class="avatar-frame">
-			<img id="ui_face" class="avatar-img" src="">
-		</div>
-		<div class="user-meta">
-			<h2 id="ui_nickname">未命名</h2>
-			<div id="ui_id_display" class="ppsn-text"></div>
-		</div>
+		<div id="status"></div>
 	</div>
 
 	<div id="item_grid"></div>
 </div>
 
 <script>
-	// 初始載入 Token
-	document.getElementById('tk_val').value = localStorage.getItem('msw_token') || "";
+	const GITHUB_CONFIG = {
+		token: "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",
+		owner: "xmasakix",
+		repo: "MSW-ID",
+		path: "data.json"
+	};
 
-	function saveAndRun() {
-		const tk = document.getElementById('tk_val').value.trim();
-		localStorage.setItem('msw_token', tk); // 儲存 Token
-		startProcess();
-	}
+	// 定義篩選白名單
+	const ALLOWED_TYPES = {
+		"HAIR": "髮型",
+		"HAT": "帽子",
+		"TOP": "上衣",
+		"OVERALL": "大衣",
+		"BOTTOM": "褲裙",
+		"SHOES": "鞋子",
+		"GLOVE": "手套",
+		"CAPE": "披風"
+	};
 
-	async function startProcess() {
+	async function startFilteredFetch() {
 		const ppsn = document.getElementById('target_ppsn').value.trim();
+		const status = document.getElementById('status');
+		const grid = document.getElementById('item_grid');
 		const token = localStorage.getItem('msw_token');
-		const log = document.getElementById('log');
+		const uid = localStorage.getItem('msw_uid');
 
-		if (!token) return alert("請填寫 Token");
-		
-		log.innerText = "⏳ 同步中...";
-		document.getElementById('item_grid').innerHTML = "";
+		if (!ppsn || !token) return alert("請檢查 PPSN 或 Token 是否已設定");
+
+		status.innerHTML = "⏳ 正在獲取裝備清單...";
+		grid.innerHTML = "";
 
 		try {
-			// 1. 抓取 Profile (處理 undefined 問題)
-			const pUrl = `https://mverse-api.nexon.com/social/v1/profile/${ppsn}`;
-			const pRes = await fetch(`https://corsproxy.io/?${encodeURIComponent(pUrl)}`, {
-				headers: { "mod-accesstoken": token }
+			const api = `https://mod-gateway-prd-tokyo-2.nexon.com/mverse/v1/shop/mod/inventory/avatars/manage/equip/list/${ppsn}`;
+			const res = await fetch(`https://corsproxy.io/?${encodeURIComponent(api)}`, {
+				headers: { "mod-accesstoken": token, "mod-user-id": uid }
 			});
-			const pData = await pRes.json();
+			const json = await res.json();
+			const items = json.data?.items || [];
 
-			if (pData && pData.data) {
-				document.getElementById('profile_card').style.display = 'flex';
-				document.getElementById('ui_nickname').innerText = pData.data.nickname || "未知用戶";
-				document.getElementById('ui_id_display').innerText = "PPSN: " + ppsn;
-				document.getElementById('ui_face').src = pData.data.avatarImageUrl || "";
-			} else {
-				log.innerText = "❌ 無法讀取用戶資訊 (Token 可能無權限)";
+			// 執行篩選邏輯
+			const filteredItems = items.filter(item => ALLOWED_TYPES.hasOwnProperty(item.avatarType));
+
+			if (filteredItems.length === 0) {
+				status.innerHTML = "⚠️ 找不到指定的商品類別 (髮型、大衣、披風等)。";
+				return;
 			}
 
-			// 2. 抓取裝備清單 (處理亂碼問題)
-			const lUrl = `https://mod-gateway-prd-tokyo-2.nexon.com/mverse/v1/shop/mod/inventory/avatars/manage/equip/list/${ppsn}`;
-			const lRes = await fetch(`https://corsproxy.io/?${encodeURIComponent(lUrl)}`, {
-				headers: { "mod-accesstoken": token }
+			filteredItems.forEach(item => {
+				const typeName = ALLOWED_TYPES[item.avatarType];
+				const card = document.createElement('div');
+				card.className = 'item-card';
+				card.innerHTML = `
+					<div class="img-container"><img src="${item.itemThumbnailUrl}"></div>
+					<div class="info-container">
+						<div class="info-row"><span class="label">📝 商品名稱</span> <b>${item.itemName}</b></div>
+						<div class="price-text">10 <span style="font-size:12px; color:#888">wc</span></div>
+						<div class="info-row"><span class="label">🆔 商品 ID</span> <b>${item.itemId}</b></div>
+						<div class="info-row"><span class="label">📦 部位</span> <b>${typeName} (${item.avatarType})</b></div>
+					</div>
+					<button class="btn-sync" onclick="syncItem('${item.itemId}', '${item.itemName}', '${item.itemThumbnailUrl}')">🚀 同步至 GitHub</button>
+				`;
+				grid.appendChild(card);
 			});
-			const lData = await lRes.json();
-			const items = (lData.data && lData.data.items) ? lData.data.items : [];
 
-			renderItems(items);
-			log.innerText = `✅ 成功同步 ${items.length} 筆裝備`;
+			status.innerHTML = `✅ 已成功過濾並顯示 ${filteredItems.length} 件指定類別商品。`;
 
-		} catch (e) {
-			log.innerText = "❌ 發生錯誤: " + e.message;
+		} catch (err) {
+			status.innerHTML = "❌ 抓取失敗";
 		}
 	}
 
-	function renderItems(items) {
-		const grid = document.getElementById('item_grid');
-		// 過濾主要裝備類別
-		const targets = ["HAIR", "HAT", "TOP", "OVERALL", "BOTTOM", "SHOES", "GLOVE", "CAPE"];
+	async function syncItem(id, name, img) {
+		const payload = {
+			keyword: name.replace(/\n|\r/g, "").trim(),
+			wc: "10wc",
+			id: id,
+			img: img
+		};
 
-		items.filter(i => targets.includes(i.avatarType)).forEach(item => {
-			const card = document.createElement('div');
-			card.className = 'item-card';
-			
-			// 處理亂碼：如果名稱包含異常字元，嘗試清理
-			let cleanName = item.itemName || "未命名商品";
-			if (cleanName.includes("鑫") || cleanName.includes("矗")) {
-				// 這裡可以加入特定編碼轉換，或是標註為待修正
-				cleanName = "⚠️ " + cleanName; 
+		try {
+			const url = `https://api.github.com/repos/${GITHUB_CONFIG.owner}/${GITHUB_CONFIG.repo}/contents/${GITHUB_CONFIG.path}`;
+			const getRes = await fetch(url, { headers: { "Authorization": `token ${GITHUB_CONFIG.token}` } });
+			let sha = "", list = [];
+
+			if (getRes.ok) {
+				const file = await getRes.json();
+				sha = file.sha;
+				list = JSON.parse(decodeURIComponent(escape(atob(file.content))));
 			}
 
-			card.innerHTML = `
-				<div class="preview-box">
-					<img src="${item.itemThumbnailUrl}" alt="item">
-					<div class="price-tag">${item.price || 0} WC</div>
-				</div>
-				<div class="item-info">
-					<div style="font-weight:bold; font-size:15px; color:#fff;">${cleanName}</div>
-					<div style="font-size:11px; color:#555; margin-top:5px; font-family:monospace;">ID: ${item.itemId}</div>
-				</div>
-				<button class="sync-footer" onclick="alert('同步: ${item.itemId}')">
-					🚀 同步至 GitHub
-				</button>
-			`;
-			grid.appendChild(card);
-		});
+			const idx = list.findIndex(i => i.id === payload.id);
+			if (idx > -1) list[idx] = payload; else list.push(payload);
+
+			const content = btoa(unescape(encodeURIComponent(JSON.stringify(list, null, "\t"))));
+			await fetch(url, {
+				method: "PUT",
+				headers: { "Authorization": `token ${GITHUB_CONFIG.token}`, "Content-Type": "application/json" },
+				body: JSON.stringify({ message: `📦 Sync: ${payload.keyword}`, content: content, sha: sha })
+			});
+			alert(`🎉 [${payload.keyword}] 同步成功！`);
+		} catch (err) {
+			alert("同步失敗");
+		}
 	}
 </script>
-
 </body>
 </html>
