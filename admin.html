@@ -150,30 +150,51 @@
         }
 
         async function fetchFromNexon() {
-            const itemId = document.getElementById('id').value;
-            const token = document.getElementById('msw_token').value;
-            const uid = document.getElementById('msw_uid').value;
-            const status = document.getElementById('status');
+    const itemId = document.getElementById('id').value.trim();
+    const token = document.getElementById('msw_token').value;
+    const uid = document.getElementById('msw_uid').value;
+    const status = document.getElementById('status');
 
-            if (!itemId) return alert("請輸入商品 ID");
-            status.innerText = "⏳ 正在從 Nexon 抓取詳情...";
-            
-            try {
-                const res = await fetch(`https://mod-gateway-prd-tokyo-2.nexon.com/mod/v1/avatar/shop/v2/items/${itemId}`, {
-                    headers: { "mod-accesstoken": token, "mod-user-id": uid }
-                });
-                const data = await res.json();
-                const item = data.item || data;
-
-                document.getElementById('keyword').value = item.itemName || "";
-                document.getElementById('wc').value = (item.itemPrice || 0) + "wc";
-                document.getElementById('img').value = item.itemImageUrl || "";
-                
-                status.innerText = "✅ 抓取成功！";
-            } catch (e) {
-                status.innerText = "❌ 失敗，請確認 Token 或開啟跨網域插件 (CORS)";
+    if (!itemId) return alert("請輸入商品 ID");
+    status.innerHTML = "⏳ 正在抓取...";
+    
+    try {
+        const targetUrl = `https://mod-gateway-prd-tokyo-2.nexon.com/mod/v1/avatar/shop/v2/items/${itemId}`;
+        const proxyUrl = `https://corsproxy.io/?${encodeURIComponent(targetUrl)}`;
+        
+        const res = await fetch(proxyUrl, {
+            headers: { 
+                "mod-accesstoken": token, 
+                "mod-user-id": uid 
             }
+        });
+
+        const data = await res.json();
+        console.log("Nexon 原始回傳：", data);
+
+        // 檢查 API 是否回傳錯誤訊息
+        if (!res.ok || data.error || data.message) {
+            status.innerHTML = `<span style="color:red">❌ 伺服器錯誤: ${data.message || res.status}</span>`;
+            return;
         }
+
+        // 根據 Nexon API 結構解析資料
+        const item = data.item || data;
+
+        if (item && item.itemName) {
+            document.getElementById('keyword').value = item.itemName;
+            document.getElementById('wc').value = (item.itemPrice || 0) + "wc";
+            document.getElementById('img').value = item.itemImageUrl || "";
+            status.innerHTML = "✅ 抓取成功！";
+        } else {
+            status.innerHTML = `<span style="color:orange">⚠️ 找不到資料。回傳內容：${JSON.stringify(data).substring(0, 50)}...</span>`;
+        }
+        
+    } catch (e) {
+        console.error(e);
+        status.innerHTML = "❌ 請求失敗：" + e.message;
+    }
+}
 
         async function uploadToGithub() {
             const ghToken = document.getElementById('gh_token').value;
