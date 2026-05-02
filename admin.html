@@ -2,7 +2,7 @@
 <html lang="zh-TW">
 <head>
     <meta charset="UTF-8">
-    <title>MSW 上架助手 - 帳號管理版</title>
+    <title>MSW 上架助手 - 完整管理版</title>
     <style>
         body { font-family: sans-serif; background: #f4f7f9; padding: 20px; display: flex; gap: 20px; justify-content: center; }
         .main-box { background: white; padding: 25px; border-radius: 12px; box-shadow: 0 4px 15px rgba(0,0,0,0.1); width: 400px; }
@@ -12,57 +12,83 @@
         label { display: block; font-size: 12px; color: #666; margin-top: 10px; font-weight: bold; }
         input { width: 100%; padding: 10px; margin-top: 5px; border: 1px solid #ddd; border-radius: 6px; box-sizing: border-box; }
         
-        .acc-item { background: #f8f9fa; padding: 10px; margin-bottom: 8px; border-radius: 6px; cursor: pointer; font-size: 13px; border: 1px solid transparent; transition: 0.2s; }
+        .acc-item { background: #f8f9fa; padding: 10px; margin-bottom: 8px; border-radius: 6px; cursor: pointer; font-size: 13px; border: 1px solid transparent; transition: 0.2s; position: relative; }
         .acc-item:hover { border-color: #5865F2; background: #f0f2ff; }
         .acc-item.active { background: #eef2ff; border-color: #5865F2; font-weight: bold; }
+        .delete-btn { position: absolute; right: 5px; top: 5px; color: #ff4d4d; border: none; background: none; cursor: pointer; font-size: 16px; width: auto; padding: 0 5px; }
 
-        button { width: 100%; padding: 12px; background: #5865F2; color: white; border: none; border-radius: 6px; cursor: pointer; margin-top: 15px; font-weight: bold; }
+        button { width: 100%; padding: 12px; background: #5865F2; color: white; border: none; border-radius: 6px; cursor: pointer; margin-top: 15px; font-weight: bold; transition: 0.2s; }
         button:hover { background: #4752c4; }
         .btn-query { background: #4a5568; margin-top: 10px; }
+        .github-config { background: #fcfcfc; padding: 15px; border: 1px dashed #ccc; border-radius: 8px; margin-top: 15px; }
+        hr { border: 0; border-top: 1px solid #eee; margin: 20px 0; }
     </style>
 </head>
 <body>
 
+    <!-- 左側帳號列表 -->
     <div class="account-box">
         <h3>👥 已存帳號</h3>
-        <div id="account-list">
-            </div>
+        <div id="account-list"></div>
         <button onclick="saveCurrentToList()" style="background: #28a745; font-size: 12px;">💾 保存當前 Token</button>
     </div>
 
+    <!-- 右側操作面板 -->
     <div class="main-box">
         <h3>📦 商品上架</h3>
         
         <label>MSW ACCESS TOKEN</label>
-        <input type="password" id="msw_token" onchange="updateActiveStatus()">
+        <input type="password" id="msw_token" placeholder="連線 Nexon API 用" onchange="updateActiveStatus()">
         
         <label>MSW USER ID</label>
-        <input type="text" id="msw_uid" onchange="updateActiveStatus()">
+        <input type="text" id="msw_uid" placeholder="連線 Nexon API 用" onchange="updateActiveStatus()">
+
+        <div class="github-config">
+            <label>GITHUB TOKEN</label>
+            <input type="password" id="gh_token" placeholder="上傳 data.json 用" onchange="saveGithubSettings()">
+            
+            <div style="display: flex; gap: 8px;">
+                <div style="flex: 1;">
+                    <label>REPO OWNER</label>
+                    <input type="text" id="gh_owner" placeholder="xmasakix" onchange="saveGithubSettings()">
+                </div>
+                <div style="flex: 1;">
+                    <label>REPO NAME</label>
+                    <input type="text" id="gh_repo" placeholder="MSW-ID" onchange="saveGithubSettings()">
+                </div>
+            </div>
+        </div>
 
         <hr>
 
         <label>商品 ID</label>
         <input type="text" id="id" placeholder="輸入 ID 後點查詢">
-        <button class="btn-query" onclick="fetchFromNexon()">🔍 查詢詳情 (模擬 Godot 邏輯)</button>
+        <button class="btn-query" onclick="fetchFromNexon()">🔍 查詢詳情</button>
 
         <label>名稱 / 價格</label>
         <div style="display: flex; gap: 10px;">
             <input type="text" id="keyword" placeholder="名稱">
-            <input type="text" id="wc" placeholder="價格" style="width: 100px;">
+            <input type="text" id="wc" placeholder="價格 (如 100wc)" style="width: 120px;">
         </div>
 
         <label>圖片網址</label>
         <input type="text" id="img">
 
-        <button onclick="uploadToGithub()">🚀 立即上架</button>
-        <div id="status" style="text-align:center; margin-top:10px; font-size:12px;"></div>
+        <button onclick="uploadToGithub()" style="font-size: 16px;">🚀 立即上架到 GitHub</button>
+        <div id="status" style="text-align:center; margin-top:10px; font-size:12px; color: #555;"></div>
     </div>
 
     <script>
         let accounts = JSON.parse(localStorage.getItem('msw_accounts') || '[]');
 
         window.onload = () => {
+            // 載入 GitHub 設定
+            document.getElementById('gh_token').value = localStorage.getItem('gh_token') || "";
+            document.getElementById('gh_owner').value = localStorage.getItem('gh_owner') || "xmasakix";
+            document.getElementById('gh_repo').value = localStorage.getItem('gh_repo') || "MSW-ID";
+            
             renderAccounts();
+            
             // 自動載入最後一次使用的帳號
             const lastUid = localStorage.getItem('current_uid');
             if (lastUid) switchAccount(lastUid);
@@ -74,10 +100,20 @@
             accounts.forEach(acc => {
                 const div = document.createElement('div');
                 div.className = 'acc-item' + (acc.uid === document.getElementById('msw_uid').value ? ' active' : '');
-                div.innerHTML = `👤 ${acc.name}<br><small style="color:#999">${acc.uid.substring(0,12)}...</small>`;
+                div.innerHTML = `
+                    <button class="delete-btn" onclick="deleteAccount(event, '${acc.uid}')">×</button>
+                    👤 ${acc.name}<br>
+                    <small style="color:#999">${acc.uid.substring(0,12)}...</small>
+                `;
                 div.onclick = () => switchAccount(acc.uid);
                 list.appendChild(div);
             });
+        }
+
+        function saveGithubSettings() {
+            localStorage.setItem('gh_token', document.getElementById('gh_token').value);
+            localStorage.setItem('gh_owner', document.getElementById('gh_owner').value);
+            localStorage.setItem('gh_repo', document.getElementById('gh_repo').value);
         }
 
         function saveCurrentToList() {
@@ -88,7 +124,6 @@
             const nickname = prompt("請輸入帳號暱稱:", "帳號 " + uid.substring(uid.length - 4));
             if (!nickname) return;
 
-            // 移除重複的 UID
             accounts = accounts.filter(a => a.uid !== uid);
             accounts.push({ name: nickname, token: token, uid: uid });
             
@@ -106,16 +141,24 @@
             }
         }
 
+        function deleteAccount(event, uid) {
+            event.stopPropagation();
+            if (!confirm("確定要刪除此帳號嗎？")) return;
+            accounts = accounts.filter(a => a.uid !== uid);
+            localStorage.setItem('msw_accounts', JSON.stringify(accounts));
+            renderAccounts();
+        }
+
         async function fetchFromNexon() {
             const itemId = document.getElementById('id').value;
             const token = document.getElementById('msw_token').value;
             const uid = document.getElementById('msw_uid').value;
             const status = document.getElementById('status');
 
-            status.innerText = "⏳ 抓取中...";
+            if (!itemId) return alert("請輸入商品 ID");
+            status.innerText = "⏳ 正在從 Nexon 抓取詳情...";
             
             try {
-                // 這邊就是你 Godot 中的 HTTPRequest 邏輯
                 const res = await fetch(`https://mod-gateway-prd-tokyo-2.nexon.com/mod/v1/avatar/shop/v2/items/${itemId}`, {
                     headers: { "mod-accesstoken": token, "mod-user-id": uid }
                 });
@@ -128,7 +171,81 @@
                 
                 status.innerText = "✅ 抓取成功！";
             } catch (e) {
-                status.innerText = "❌ 失敗，請確認 Token 或 CORS 插件是否開啟";
+                status.innerText = "❌ 失敗，請確認 Token 或開啟跨網域插件 (CORS)";
+            }
+        }
+
+        async function uploadToGithub() {
+            const ghToken = document.getElementById('gh_token').value;
+            const owner = document.getElementById('gh_owner').value;
+            const repo = document.getElementById('gh_repo').value;
+            const status = document.getElementById('status');
+
+            if (!ghToken) return alert("請填寫 GITHUB TOKEN");
+
+            const newItem = {
+                itemId: document.getElementById('id').value,
+                itemName: document.getElementById('keyword').value,
+                itemPrice: document.getElementById('wc').value,
+                itemImageUrl: document.getElementById('img').value,
+                updatedAt: new Date().toISOString()
+            };
+
+            if (!newItem.itemId || !newItem.itemName) return alert("商品 ID 或名稱不可為空");
+
+            status.innerText = "⏳ 正在處理 GitHub 上傳...";
+
+            try {
+                const filePath = "data.json";
+                const url = `https://api.github.com/repos/${owner}/${repo}/contents/${filePath}`;
+
+                // 1. 取得舊檔內容
+                const getRes = await fetch(url, {
+                    headers: { "Authorization": `token ${ghToken}` }
+                });
+                
+                let sha = "";
+                let currentData = [];
+                
+                if (getRes.ok) {
+                    const fileInfo = await getRes.json();
+                    sha = fileInfo.sha;
+                    // 正確解碼 UTF-8 (解決中文亂碼)
+                    currentData = JSON.parse(decodeURIComponent(escape(atob(fileInfo.content))));
+                }
+
+                // 2. 更新資料列
+                const index = currentData.findIndex(i => i.itemId === newItem.itemId);
+                if (index > -1) {
+                    currentData[index] = newItem;
+                } else {
+                    currentData.push(newItem);
+                }
+
+                // 3. 編碼並推回 GitHub
+                const updatedContent = btoa(unescape(encodeURIComponent(JSON.stringify(currentData, null, 2))));
+                const putRes = await fetch(url, {
+                    method: "PUT",
+                    headers: {
+                        "Authorization": `token ${ghToken}`,
+                        "Content-Type": "application/json"
+                    },
+                    body: JSON.stringify({
+                        message: `🚀 上架商品: ${newItem.itemName}`,
+                        content: updatedContent,
+                        sha: sha
+                    })
+                });
+
+                if (putRes.ok) {
+                    status.innerText = "✅ 成功！資料已同步到 GitHub。";
+                } else {
+                    const err = await putRes.json();
+                    status.innerText = "❌ GitHub 錯誤: " + err.message;
+                }
+
+            } catch (e) {
+                status.innerText = "❌ 發生錯誤: " + e.message;
             }
         }
 
