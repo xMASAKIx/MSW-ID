@@ -2,145 +2,137 @@
 <html lang="zh-TW">
 <head>
 	<meta charset="UTF-8">
-	<title>MSW Admin Helper - Stable Version</title>
+	<title>MSW Admin Helper - Token First Version</title>
 	<style>
 		body { font-family: 'Segoe UI', sans-serif; background-color: #0e0e10; color: #efeff1; margin: 0; padding: 20px; display: flex; flex-direction: column; align-items: center; }
 		.container { width: 100%; max-width: 1000px; }
 
-		/* 搜尋與設定區 */
-		.search-section { background: #18181b; padding: 20px; border-radius: 12px; border: 1px solid #2d2d30; margin-bottom: 20px; }
-		.input-group { display: flex; gap: 10px; margin-bottom: 10px; }
-		input { background: #0e0e10; border: 1px solid #3f3f44; color: #fff; padding: 10px; border-radius: 6px; flex: 1; outline: none; }
-		button { background: #5865f2; color: white; border: none; padding: 10px 20px; border-radius: 6px; cursor: pointer; font-weight: bold; }
+		/* 設定區域 */
+		.config-bar { background: #18181b; padding: 15px; border-radius: 12px; border: 1px solid #e91916; margin-bottom: 20px; width: 100%; box-sizing: border-box; }
+		.config-bar input { background: #000; border: 1px solid #444; color: #0f0; padding: 8px; width: calc(100% - 110px); border-radius: 4px; font-family: monospace; }
+		.config-bar button { width: 80px; padding: 8px; background: #3a3a3d; color: #fff; border: none; cursor: pointer; border-radius: 4px; }
 
-		/* 用戶資訊區塊 */
-		#user_profile { background: #18181b; border-radius: 12px; border: 1px solid #2d2d30; padding: 25px; margin-bottom: 25px; display: none; }
-		.profile-layout { display: flex; align-items: center; gap: 30px; }
-		.full-body-wrapper { background: rgba(0,0,0,0.5); padding: 15px; border-radius: 12px; min-width: 150px; text-align: center; }
-		.full-body-img { height: 220px; image-rendering: pixelated; }
-		.nickname { font-size: 28px; font-weight: bold; color: #fff; }
-		.ppsn-tag { color: #666; font-family: monospace; font-size: 14px; margin-top: 5px; }
+		/* 搜尋區域 */
+		.search-bar { display: flex; gap: 10px; margin-bottom: 25px; width: 100%; }
+		.search-bar input { flex: 1; padding: 12px; background: #18181b; border: 1px solid #3f3f44; color: #fff; border-radius: 8px; }
+		.search-bar button { padding: 0 30px; background: #5865f2; color: white; border: none; border-radius: 8px; font-weight: bold; cursor: pointer; }
+
+		/* 用戶資訊 */
+		#profile_box { background: #18181b; border: 1px solid #2d2d30; padding: 20px; border-radius: 12px; margin-bottom: 25px; display: none; align-items: center; gap: 20px; }
+		.avatar-img { height: 180px; image-rendering: pixelated; border: 1px solid #333; border-radius: 8px; background: #000; }
+		.user-info h2 { margin: 0 0 10px 0; font-size: 24px; }
+		.ppsn-label { color: #666; font-family: monospace; font-size: 14px; }
 
 		/* 商品列表 */
-		#item_grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 20px; width: 100%; }
-		.item-card { background: #18181b; border-radius: 12px; border: 1px solid #2d2d30; overflow: hidden; display: flex; flex-direction: column; }
-		.img-box { background: #000; height: 200px; display: flex; align-items: center; justify-content: center; position: relative; }
-		.img-box img { max-width: 100%; max-height: 100%; image-rendering: pixelated; }
-		.wc-badge { position: absolute; left: 12px; bottom: 12px; background: #43b581; color: white; padding: 4px 10px; border-radius: 6px; font-weight: bold; }
-		.info-box { padding: 15px; flex-grow: 1; }
-		.sync-btn { width: 100%; background: #3a3a3d; color: #fff; border: none; padding: 12px; cursor: pointer; border-top: 1px solid #2d2d30; font-weight: bold; }
+		#item_grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(250px, 1fr)); gap: 20px; width: 100%; }
+		.card { background: #18181b; border: 1px solid #2d2d30; border-radius: 10px; overflow: hidden; display: flex; flex-direction: column; }
+		.card-img { background: #000; height: 180px; display: flex; align-items: center; justify-content: center; position: relative; }
+		.card-img img { max-width: 90%; max-height: 90%; image-rendering: pixelated; }
+		.price { position: absolute; bottom: 10px; left: 10px; background: #43b581; color: #fff; padding: 2px 8px; border-radius: 4px; font-size: 12px; font-weight: bold; }
+		.card-body { padding: 15px; flex-grow: 1; }
+		.sync-btn { background: #3a3a3d; border: none; color: #fff; padding: 10px; cursor: pointer; border-top: 1px solid #2d2d30; }
 
-		#status { margin-bottom: 15px; color: #adadb8; text-align: center; min-height: 20px; }
+		#status_msg { margin-bottom: 10px; font-size: 14px; }
 	</style>
 </head>
 <body>
 
 <div class="container">
-	<div class="search-section">
-		<div class="input-group">
-			<input type="text" id="ppsn_input" placeholder="輸入 PPSN (例如: 20372100007618840)" value="20372100007618840">
-			<input type="text" id="token_input" placeholder="貼上 mod-accesstoken">
-			<button onclick="executeFetch()">執行查詢</button>
-		</div>
-		<div id="status">請確保 Token 已填寫</div>
+	<div class="config-bar">
+		<input type="text" id="token_input" placeholder="貼上你的 mod-accesstoken (Bearer ...)">
+		<button onclick="saveToken()">儲存</button>
 	</div>
 
-	<!-- 用戶顯示區 -->
-	<div id="user_profile">
-		<div class="profile-layout">
-			<div class="full-body-wrapper">
-				<img id="ui_full_body" class="full-body-img" src="" alt="Avatar">
-			</div>
-			<div class="user-details">
-				<div id="ui_nickname" class="nickname">載入中...</div>
-				<div id="ui_ppsn" class="ppsn-tag"></div>
-			</div>
+	<div class="search-bar">
+		<input type="text" id="target_ppsn" placeholder="輸入要抓取的 PPSN (例如: 20372100004991307)" value="20372100004991307">
+		<button onclick="fetchData()">抓取資料</button>
+	</div>
+
+	<div id="status_msg">等待輸入中...</div>
+
+	<div id="profile_box">
+		<img id="ui_avatar" class="avatar-img">
+		<div class="user-info">
+			<h2 id="ui_name">載入中...</h2>
+			<div id="ui_ppsn" class="ppsn-label"></div>
 		</div>
 	</div>
 
-	<!-- 商品清單 -->
 	<div id="item_grid"></div>
 </div>
 
 <script>
-	// 讀取 Token 緩存
+	// 初始化 Token 緩存
 	document.getElementById('token_input').value = localStorage.getItem('msw_token') || "";
 
-	async function executeFetch() {
-		const ppsn = document.getElementById('ppsn_input').value.trim();
-		const token = document.getElementById('token_input').value.trim();
-		const status = document.getElementById('status');
+	function saveToken() {
+		const tk = document.getElementById('token_input').value.trim();
+		localStorage.setItem('msw_token', tk);
+		alert("Token 已儲存！");
+	}
 
-		if (!ppsn || !token) return alert("PPSN 與 Token 皆為必填");
-		localStorage.setItem('msw_token', token);
+	async function fetchData() {
+		const ppsn = document.getElementById('target_ppsn').value.trim();
+		const token = localStorage.getItem('msw_token');
+		const status = document.getElementById('status_msg');
 
-		status.innerText = "⏳ 正在同步資料中...";
-		document.getElementById('user_profile').style.display = 'none';
+		if (!token) return alert("請先填寫 Token 並儲存！");
+		if (!ppsn) return alert("請輸入 PPSN");
+
+		status.innerText = "⏳ 正在驗證身分並請求資料...";
 		document.getElementById('item_grid').innerHTML = "";
 
 		try {
-			// 1. 同步執行 Profile 與 List 抓取
-			await Promise.all([
-				fetchProfile(ppsn, token),
-				fetchItems(ppsn, token)
-			]);
-			status.innerText = "✅ 載入成功";
-		} catch (err) {
-			console.error(err);
-			status.innerText = "❌ 載入失敗，請檢查 Token 是否過期";
-		}
-	}
+			// 1. 抓取 Profile (驗證 Token 是否有效)
+			const profileRes = await fetch(`https://corsproxy.io/?${encodeURIComponent('https://mverse-api.nexon.com/social/v1/profile/' + ppsn)}`, {
+				headers: { "mod-accesstoken": token }
+			});
+			const profileJson = await profileRes.json();
 
-	async function fetchProfile(ppsn, token) {
-		const url = `https://mverse-api.nexon.com/social/v1/profile/${ppsn}`;
-		const res = await fetch(`https://corsproxy.io/?${encodeURIComponent(url)}`, {
-			headers: { "mod-accesstoken": token }
-		});
-		const json = await res.json();
-		
-		if (json.data) {
-			const d = json.data;
-			document.getElementById('user_profile').style.display = 'block';
-			document.getElementById('ui_nickname').innerText = d.nickname || "未知用戶";
+			if (!profileJson.data) {
+				throw new Error("Token 可能已過期或 PPSN 不存在");
+			}
+
+			const user = profileJson.data;
+			document.getElementById('profile_box').style.display = 'flex';
+			document.getElementById('ui_name').innerText = user.nickname;
 			document.getElementById('ui_ppsn').innerText = "PPSN: " + ppsn;
-			document.getElementById('ui_full_body').src = d.avatarImageUrl || "";
+			document.getElementById('ui_avatar').src = user.avatarImageUrl;
+
+			// 2. 抓取正式裝備清單
+			const listUrl = `https://mod-gateway-prd-tokyo-2.nexon.com/mverse/v1/shop/mod/inventory/avatars/manage/equip/list/${ppsn}`;
+			const listRes = await fetch(`https://corsproxy.io/?${encodeURIComponent(listUrl)}`, {
+				headers: { "mod-accesstoken": token }
+			});
+			const listJson = await listRes.json();
+			const items = (listJson.data && listJson.data.items) ? listJson.data.items : [];
+
+			renderItems(items);
+			status.innerText = `✅ 成功抓取 ${items.length} 筆裝備`;
+
+		} catch (err) {
+			status.innerHTML = `<b style="color:red">❌ 錯誤: ${err.message}</b>`;
+			console.error(err);
 		}
 	}
 
-	async function fetchItems(ppsn, token) {
-		const url = `https://mod-gateway-prd-tokyo-2.nexon.com/mverse/v1/shop/mod/inventory/avatars/manage/equip/list/${ppsn}`;
-		const res = await fetch(`https://corsproxy.io/?${encodeURIComponent(url)}`, {
-			headers: { "mod-accesstoken": token }
-		});
-		const json = await res.json();
-		
-		// 檢查資料層級，避免出現 undefined
-		const items = (json && json.data && json.data.items) ? json.data.items : [];
-		
+	function renderItems(items) {
 		const grid = document.getElementById('item_grid');
 		const targetTypes = ["HAIR", "HAT", "TOP", "OVERALL", "BOTTOM", "SHOES", "GLOVE", "CAPE"];
 		
-		const filtered = items.filter(i => targetTypes.includes(i.avatarType));
-		
-		if (filtered.length === 0) {
-			document.getElementById('status').innerText = "⚠️ 該用戶目前沒有可識別的商品清單";
-			return;
-		}
-
-		filtered.forEach(item => {
-			const price = item.price || item.salePrice || 0;
+		items.filter(i => targetTypes.includes(i.avatarType)).forEach(item => {
 			const card = document.createElement('div');
-			card.className = 'item-card';
+			card.className = 'card';
 			card.innerHTML = `
-				<div class="img-box">
-					<img src="${item.itemThumbnailUrl}" onerror="this.src='https://placehold.co/200x200?text=No+Image'">
-					<div class="wc-badge">${price} WC</div>
+				<div class="card-img">
+					<img src="${item.itemThumbnailUrl}">
+					<div class="price">${item.price || item.salePrice || 0} WC</div>
 				</div>
-				<div class="info-box">
-					<div style="font-weight:bold; font-size:14px; margin-bottom:4px;">${item.itemName || '未命名商品'}</div>
-					<div style="color:#777; font-size:11px; font-family:monospace;">ID: ${item.itemId}</div>
+				<div class="card-body">
+					<div style="font-weight:bold; font-size:14px;">${item.itemName}</div>
+					<div style="font-size:11px; color:#666; margin-top:4px;">ID: ${item.itemId}</div>
 				</div>
-				<button class="sync-btn" onclick="alert('同步: ${item.itemName}')">🚀 同步到 GitHub</button>
+				<button class="sync-btn" onclick="alert('同步: ${item.itemName}')">🚀 同步</button>
 			`;
 			grid.appendChild(card);
 		});
