@@ -16,28 +16,31 @@ jobs:
 
       - name: Extract Last Item and Notify
         run: |
-          # 1. 使用 jq 抓取 JSON 陣列中的最後一個物件內容
-          # 我們提取 keyword, wc, id 三個欄位
+          # 1. 提取資料
           ITEM_NAME=$(jq -r '.[-1].keyword' data.json)
           ITEM_PRICE=$(jq -r '.[-1].wc' data.json)
           ITEM_ID=$(jq -r '.[-1].id' data.json)
           ITEM_IMG=$(jq -r '.[-1].img' data.json)
 
-          # 2. 發送至 Discord，並排版得漂亮一點
+          # 2. 發送至 Discord
+          # 使用 `image` 讓圖片變大
+          # ID 使用反引號包裹以方便複製
+          # 連結放在最後一個欄位並設定 inline: false
           curl -H "Content-Type: application/json" \
           -X POST \
           -d "{
-            \"content\": \"📦 **MSW-ID 商品庫存更新！**\",
+            \"content\": \"📦 **MSW-ID 新黑絲商品更新！**\",
             \"embeds\": [{
               \"title\": \"🆕 已新增商品：$ITEM_NAME\",
-              \"thumbnail\": { \"url\": \"$ITEM_IMG\" },
-              \"color\": 1752220,
+              \"color\": 3928116,
               \"fields\": [
-                { \"name\": \"價格\", \"value\": \"$ITEM_PRICE\", \"inline\": true },
-                { \"name\": \"商品 ID\", \"value\": \"$ITEM_ID\", \"inline\": true }
+                { \"name\": \"價格\", \"value\": \"$ITEM_PRICE WC\", \"inline\": true },
+                { \"name\": \"商品 ID (點擊可複製)\", \"value\": \"\`$ITEM_ID\`\", \"inline\": true },
+                { \"name\": \"備註\", \"value\": \"好黑絲 不看嗎?\", \"inline\": false },
+                { \"name\": \"快速連結\", \"value\": \"[👉 點擊開啟網頁查看黑絲照](https://xmasakix.github.io/MSW-ID/)\", \"inline\": false }
               ],
-              \"description\": \"[點擊開啟網頁查看黑絲照](https://xmasakix.github.io/MSW-ID/)\",
-              \"footer\": { \"text\": \"好黑絲 不看嗎?\" }
+              \"image\": { \"url\": \"$ITEM_IMG\" },
+              \"footer\": { \"text\": \"來自 xmasakix 的自動通知\" }
             }]
           }" \
           ${{ secrets.DISCORD_WEBHOOK }}
