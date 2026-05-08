@@ -209,6 +209,7 @@
     }
 
     // 渲染分類按鈕
+    // 渲染分類按鈕
     function renderFilters(data) {
         const filterGroup = document.getElementById('filterGroup');
         const authorsInData = new Set();
@@ -221,7 +222,7 @@
 
         filterGroup.innerHTML = '';
         
-        // 建立「全部」按鈕
+        // 1. 建立「全部」按鈕
         const allBtn = document.createElement('button');
         allBtn.className = 'filter-btn active';
         allBtn.innerText = `全部 (${data.length})`;
@@ -231,8 +232,20 @@
         };
         filterGroup.appendChild(allBtn);
 
-        // 建立各作者按鈕
-        Array.from(authorsInData).sort().forEach(authorName => {
+        // --- 核心修改：排序邏輯 ---
+        // 把 Set 轉成陣列，並排除掉「其他」這個名字
+        const otherLabel = CATEGORY_MAP["default"]; // 取得你定義的「其他」文字
+        let sortedAuthors = Array.from(authorsInData)
+                                 .filter(name => name !== otherLabel) // 先拿掉其他
+                                 .sort(); // 剩下的按筆畫/字母排序
+
+        // 如果原本的名單裡有「其他」，就把它加回陣列的最末端
+        if (authorsInData.has(otherLabel)) {
+            sortedAuthors.push(otherLabel);
+        }
+
+        // 2. 依照排序後的順序建立按鈕
+        sortedAuthors.forEach(authorName => {
             const authorData = data.filter(item => (CATEGORY_MAP[item.author] || CATEGORY_MAP["default"]) === authorName);
             const btn = document.createElement('button');
             btn.className = 'filter-btn';
