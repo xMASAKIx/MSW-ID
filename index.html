@@ -185,53 +185,146 @@
 
 <script>
     const DATA_URL = 'https://raw.githubusercontent.com/xMASAKIx/MSW-ID/refs/heads/main/data.json'; 
+    // 這裡定義你的分類對照表
+    const CATEGORY_MAP = {
+        "20372100000223997": "別時",
+        "20372100005338018": "小波",
+        "20372100003479787": "卡提",
+        "20372100003567962": "妃姬",
+        "20372100008583110": "ES(夜夜發貨號)",
+        "20372100005894481":  "平行",
+        "20372100003096391": "幽幽子",
+        "20372100001110251": "mimiming天使",
+        "20372100002790823": "mimiming天使",
+        "20372100004235799": "死靈",
+        "20372100005999546": "TJ01",
+        "20372100005764633": "TJ02",
+        "20372100005118171": "兔仔",
+        "20372000486671177": "韓國愛芮",
+        "20372100005311821": "照",
+        "20372100003863084": "阿卡利",
+        "20372100000180209": "PLAT",
+        "20372100003462165": "奧米加獸",
+        "20372100000208070": "珊璞",
+        "20372100002340154": "金武金",
+        "20372100005770592": "PAKA",
+        "20372100005385883": "白狐",
+        "20372100005694709": "小別時",
+        "20372100008443475": "paka1",
+        "20372100005802883": "paka2",
+        "20372100008359961": "沖田",
+        "20372100002553986": "殺手兔",
+        "20372100006407090": "北極熊初音",
+        "20372100009098159": "哥倫比雅",
+        "default": "其他" // 如果代碼不在名單內，顯示這個
+    };
+    
+    async function loadData() {
+        try {
+            const response = await fetch(`${DATA_URL}?t=${new Date().getTime()}`);
+            let data = await response.json();
+            
+            const container = document.getElementById('gridContainer');
+            container.innerHTML = ''; 
+    
+            // --- 核心自動辨識邏輯 ---
+            const groups = data.reduce((acc, item) => {
+                // 從 item.author (或你原本存放 tJL7G 的欄位) 取得代碼
+                const code = item.author || "default"; 
+                
+                // 使用對照表把代碼「翻譯」成名字
+                const displayName = CATEGORY_MAP[code] || CATEGORY_MAP["default"];
+                
+                if (!acc[displayName]) acc[displayName] = [];
+                acc[displayName].push(item);
+                return acc;
+            }, {});
+    
+            // 根據翻譯後的名字分堆顯示
+            for (const name in groups) {
+                const header = document.createElement('div');
+                header.style.gridColumn = "1 / -1"; 
+                header.innerHTML = `<h3 style="color: #39ff14;">● ${name}</h3>`;
+                container.appendChild(header);
+    
+                groups[name].forEach(item => {
+                    container.appendChild(createCard(item));
+                });
+            }
+            
+    // 建立單個卡片的函式 (分離出來讓分類邏輯更簡潔)
+    function createCard(item) {
+        const idLines = item.id.split('\n');
+        let idHtml = '';
+        idLines.forEach(line => {
+            if(line.trim() !== "") {
+                const safeLine = line.trim().replace(/'/g, "\\'");
+                idHtml += `<div class="copy-item" onclick="copyToClipboard('${safeLine}')">${line.trim()}</div>`;
+            }
+        });
+
+        const card = document.createElement('div');
+        card.className = 'item-card';
+        card.innerHTML = `
+            <div class="card-top">
+                <div class="info-area">
+                    <div class="info-row"><span class="label">商品名稱：</span><span>${item.keyword}</span></div>
+                    <div class="info-row"><span class="label">商品價格：</span><span>${item.wc} WC</span></div>
+                    <div class="info-row"><span class="label">商品ID</span></div>
+                </div>
+                <div class="img-area">
+                    <img src="${item.img}" class="item-img" onerror="this.src='https://via.placeholder.com/100/252525/39ff14?text=No+Img'">
+                </div>
+            </div>
+            <div class="id-area">
+                ${idHtml}
+            </div>
+        `;
+        return card;
+    }
 
     async function loadData() {
         try {
             const response = await fetch(`${DATA_URL}?t=${new Date().getTime()}`);
             let data = await response.json();
             
-            data.reverse(); // 新的在前面
+            // 如果你想讓最新的作品在最上面，可以先 reverse
+            data.reverse();
 
             const container = document.getElementById('gridContainer');
             container.innerHTML = ''; 
 
-            data.forEach(item => {
-                // 處理 ID 分行
-                const idLines = item.id.split('\n');
-                let idHtml = '';
-                idLines.forEach(line => {
-                    if(line.trim() !== "") {
-                        const safeLine = line.trim().replace(/'/g, "\\'");
-                        idHtml += `<div class="copy-item" onclick="copyToClipboard('${safeLine}')">${line.trim()}</div>`;
-                    }
-                });
+            // --- 核心分類邏輯 ---
+            // 1. 先把資料按作者分組
+            const groups = data.reduce((acc, item) => {
+                const author = item.author || "未分類作者"; // 如果沒有填作者，顯示為未分類
+                if (!acc[author]) acc[author] = [];
+                acc[author].push(item);
+                return acc;
+            }, {});
 
-                // 建立卡片 HTML
-                const card = document.createElement('div');
-                card.className = 'item-card';
-                card.innerHTML = `
-                    <div class="card-top">
-                        <div class="info-area">
-                            <div class="info-row"><span class="label">商品名稱：</span><span>${item.keyword}</span></div>
-                            <div class="info-row"><span class="label">商品價格：</span><span>${item.wc} WC</span></div>
-                            <div class="info-row"><span class="label">商品ID</span></div>
-                        </div>
-                        <div class="img-area">
-                            <img src="${item.img}" class="item-img" onerror="this.src='https://via.placeholder.com/100/252525/39ff14?text=No+Img'">
-                        </div>
-                    </div>
-                    <div class="id-area">
-                        ${idHtml}
-                    </div>
-                `;
-                container.appendChild(card);
-            });
+            // 2. 根據作者一組一組顯示出來
+            for (const author in groups) {
+                // 插入作者大標題（橫跨整列）
+                const header = document.createElement('div');
+                header.style.gridColumn = "1 / -1"; 
+                header.style.padding = "20px 10px 10px 10px";
+                header.style.borderBottom = "1px solid #3d3d3d";
+                header.style.marginBottom = "10px";
+                header.innerHTML = `<h3 style="color: #39ff14; margin: 0;">● 作者：${author} <small style="color: #666; font-size: 14px;">(${groups[author].length} 件作品)</small></h3>`;
+                container.appendChild(header);
+
+                // 插入該作者的所有卡片
+                groups[author].forEach(item => {
+                    const card = createCard(item);
+                    container.appendChild(card);
+                });
+            }
 
             document.getElementById('loader').style.display = 'none';
             container.style.display = 'grid';
         } catch (error) {
-            document.getElementById('loader').innerText = '✘ 資料讀取失敗';
+            document.getElementById('loader').innerText = '✘ 資料讀取失敗 (請檢查 JSON 格式或欄位)';
             console.error('Fetch error:', error);
         }
     }
