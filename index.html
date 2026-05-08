@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>正版商品ID(點ID複製)</title>
+    <title>正版商品ID(按作者分類)</title>
     <style>
         :root {
             --bg-body: #121212;
@@ -24,24 +24,57 @@
             padding: 20px; 
         }
         
-        .container { 
-            max-width: 1200px; 
-            margin: 0 auto;
-        }
+        .container { max-width: 1200px; margin: 0 auto; }
         
         h2 { 
             color: var(--text-highlight); 
             text-align: center; 
-            border-bottom: 2px solid var(--text-highlight); 
-            padding-bottom: 15px; 
             text-shadow: 0 0 10px var(--accent-glow);
+            margin-bottom: 30px;
         }
 
+        /* --- 分類按鈕區域 --- */
+        .filter-group {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 10px;
+            justify-content: center;
+            margin-bottom: 30px;
+            padding: 15px;
+            background: var(--bg-container);
+            border-radius: 15px;
+            border: 1px solid var(--border-color);
+        }
+
+        .filter-btn {
+            padding: 8px 18px;
+            background: #1a1a1a;
+            color: var(--text-main);
+            border: 1px solid var(--border-color);
+            border-radius: 20px;
+            cursor: pointer;
+            font-weight: bold;
+            transition: all 0.3s;
+        }
+
+        .filter-btn:hover {
+            border-color: var(--text-highlight);
+            color: var(--text-highlight);
+            box-shadow: 0 0 8px var(--accent-glow);
+        }
+
+        .filter-btn.active {
+            background: var(--text-highlight);
+            color: #000;
+            border-color: var(--text-highlight);
+            box-shadow: 0 0 15px var(--accent-glow);
+        }
+
+        /* --- 卡片排版 --- */
         .grid-container {
             display: grid;
             grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
             gap: 20px;
-            margin-top: 20px;
         }
 
         .item-card {
@@ -59,99 +92,39 @@
             box-shadow: 0 4px 15px rgba(0,0,0,0.5);
         }
 
-        .card-top {
-            display: flex;
-            justify-content: space-between;
-            margin-bottom: 15px;
-        }
-
-        .info-area {
-            flex: 1;
-            display: flex;
-            flex-direction: column;
-            gap: 8px;
-            font-size: 16px;
-        }
-
+        .card-top { display: flex; justify-content: space-between; margin-bottom: 15px; }
+        .info-area { flex: 1; display: flex; flex-direction: column; gap: 8px; font-size: 16px; }
         .info-row { display: flex; align-items: flex-start; }
-
-        .label {
-            white-space: nowrap;
-            color: #aaa;
-            margin-right: 5px;
-        }
+        .label { white-space: nowrap; color: #aaa; margin-right: 5px; }
 
         .img-area {
-            width: 100px;
-            height: 100px;
-            margin-left: 10px;
-            background: #121212;
-            border-radius: 8px;
-            overflow: visible;
-            display: flex;
-            align-items: center;
-            justify-content: center;
+            width: 100px; height: 100px; margin-left: 10px; background: #121212;
+            border-radius: 8px; display: flex; align-items: center; justify-content: center;
         }
 
         .item-img {
-            max-width: 100%;
-            max-height: 100%;
-            border-radius: 4px;
-            cursor: zoom-in;
-            transition: transform 0.3s;
+            max-width: 100%; max-height: 100%; border-radius: 4px;
+            cursor: zoom-in; transition: transform 0.3s;
         }
 
-        .item-img:hover {
-            transform: scale(2.5);
-            z-index: 100;
-            box-shadow: 0 0 15px var(--accent-glow);
-        }
+        .item-img:hover { transform: scale(2.5); z-index: 100; box-shadow: 0 0 15px var(--accent-glow); }
 
         .id-area { margin-top: auto; }
-
         .copy-item {
-            cursor: pointer;
-            padding: 12px;
-            border-radius: 6px;
-            background-color: #1a1a1a;
-            color: var(--text-highlight);
-            font-weight: bold;
-            font-size: 20px;
-            text-align: center;
-            border: 1px solid var(--border-color);
-            transition: all 0.2s;
-            word-break: break-all;
-            margin-bottom: 5px;
+            cursor: pointer; padding: 12px; border-radius: 6px; background-color: #1a1a1a;
+            color: var(--text-highlight); font-weight: bold; font-size: 20px; text-align: center;
+            border: 1px solid var(--border-color); transition: all 0.2s; word-break: break-all; margin-bottom: 5px;
         }
 
-        .copy-item:hover {
-            background-color: var(--hover-bg);
-            border-color: var(--text-highlight);
-            box-shadow: 0 0 10px var(--accent-glow);
-        }
-
-        .copy-item:active { transform: scale(0.98); }
+        .copy-item:hover { background-color: var(--hover-bg); border-color: var(--text-highlight); box-shadow: 0 0 10px var(--accent-glow); }
 
         #loader { text-align: center; font-size: 18px; padding: 60px; }
-
         #toast {
-            visibility: hidden; 
-            min-width: 250px; 
-            background-color: #000; 
-            color: var(--text-highlight);
-            text-align: center; 
-            border-radius: 50px;
-            padding: 15px 25px; 
-            position: fixed;
-            z-index: 200;
-            left: 50%; 
-            bottom: 50px; 
-            transform: translateX(-50%);
-            box-shadow: 0 0 20px var(--accent-glow);
-            border: 1px solid var(--text-highlight);
-            font-weight: bold;
+            visibility: hidden; min-width: 250px; background-color: #000; color: var(--text-highlight);
+            text-align: center; border-radius: 50px; padding: 15px 25px; position: fixed;
+            z-index: 200; left: 50%; bottom: 50px; transform: translateX(-50%);
+            box-shadow: 0 0 20px var(--accent-glow); border: 1px solid var(--text-highlight); font-weight: bold;
         }
-        
         #toast.show { visibility: visible; animation: fadein 0.5s, fadeout 0.5s 2.5s; }
         @keyframes fadein { from {bottom: 0; opacity: 0;} to {bottom: 50px; opacity: 1;} }
         @keyframes fadeout { from {bottom: 50px; opacity: 1;} to {bottom: 0; opacity: 0;} }
@@ -160,7 +133,10 @@
 <body>
 
 <div class="container">
-    <h2>正版商品ID(點ID複製)</h2>
+    <h2>正版商品ID(按作者分類)</h2>
+    
+    <div id="filterGroup" class="filter-group" style="display: none;"></div>
+
     <div id="loader">同步雲端資料中...</div>
     <div id="gridContainer" class="grid-container" style="display: none;"></div>
 </div>
@@ -169,8 +145,8 @@
 
 <script>
     const DATA_URL = 'https://raw.githubusercontent.com/xMASAKIx/MSW-ID/refs/heads/main/data.json'; 
-    
-    // 分類對照表
+    let allRawData = []; // 儲存所有原始資料
+
     const CATEGORY_MAP = {
         "20372100000223997": "別時",
         "20372100005338018": "小波",
@@ -201,10 +177,9 @@
         "20372100002553986": "殺手兔",
         "20372100006407090": "北極熊初音",
         "20372100009098159": "哥倫比雅",
-        "default": "其他作者"
+        "default": "其他"
     };
 
-    // 建立卡片
     function createCard(item) {
         const idLines = item.id.split('\n');
         let idHtml = '';
@@ -233,53 +208,77 @@
         return card;
     }
 
+    // 渲染分類按鈕
+    function renderFilters(data) {
+        const filterGroup = document.getElementById('filterGroup');
+        const authorsInData = new Set();
+        
+        // 取得目前資料中所有出現過的作者名稱
+        data.forEach(item => {
+            const name = CATEGORY_MAP[item.author] || CATEGORY_MAP["default"];
+            authorsInData.add(name);
+        });
+
+        filterGroup.innerHTML = '';
+        
+        // 建立「全部」按鈕
+        const allBtn = document.createElement('button');
+        allBtn.className = 'filter-btn active';
+        allBtn.innerText = `全部 (${data.length})`;
+        allBtn.onclick = function() {
+            switchActiveBtn(this);
+            displayData(data);
+        };
+        filterGroup.appendChild(allBtn);
+
+        // 建立各作者按鈕
+        Array.from(authorsInData).sort().forEach(authorName => {
+            const authorData = data.filter(item => (CATEGORY_MAP[item.author] || CATEGORY_MAP["default"]) === authorName);
+            const btn = document.createElement('button');
+            btn.className = 'filter-btn';
+            btn.innerText = `${authorName} (${authorData.length})`;
+            btn.onclick = function() {
+                switchActiveBtn(this);
+                displayData(authorData);
+            };
+            filterGroup.appendChild(btn);
+        });
+
+        filterGroup.style.display = 'flex';
+    }
+
+    function switchActiveBtn(target) {
+        document.querySelectorAll('.filter-btn').forEach(btn => btn.classList.remove('active'));
+        target.classList.add('active');
+    }
+
+    function displayData(data) {
+        const container = document.getElementById('gridContainer');
+        container.innerHTML = '';
+        data.forEach(item => container.appendChild(createCard(item)));
+        container.style.display = 'grid';
+    }
+
     async function loadData() {
         try {
             const response = await fetch(`${DATA_URL}?t=${new Date().getTime()}`);
-            let data = await response.json();
-            data.reverse();
+            allRawData = await response.json();
+            allRawData.reverse();
 
-            const container = document.getElementById('gridContainer');
-            container.innerHTML = ''; 
-
-            // 核心分類邏輯
-            const groups = data.reduce((acc, item) => {
-                const code = item.author || "default"; 
-                const displayName = CATEGORY_MAP[code] || CATEGORY_MAP["default"];
-                if (!acc[displayName]) acc[displayName] = [];
-                acc[displayName].push(item);
-                return acc;
-            }, {});
-
-            // 渲染
-            for (const name in groups) {
-                const header = document.createElement('div');
-                header.style.gridColumn = "1 / -1"; 
-                header.style.padding = "20px 10px 10px 10px";
-                header.style.borderBottom = "1px solid #3d3d3d";
-                header.style.marginBottom = "10px";
-                header.innerHTML = `<h3 style="color: #39ff14; margin: 0;">● 作者：${name} <small style="color: #666; font-size: 14px;">(${groups[name].length} 件作品)</small></h3>`;
-                container.appendChild(header);
-
-                groups[name].forEach(item => {
-                    container.appendChild(createCard(item));
-                });
-            }
+            renderFilters(allRawData);
+            displayData(allRawData);
 
             document.getElementById('loader').style.display = 'none';
-            container.style.display = 'grid';
         } catch (error) {
-            document.getElementById('loader').innerText = '✘ 資料讀取失敗 (請檢查 JSON)';
-            console.error('Error:', error);
+            document.getElementById('loader').innerText = '✘ 資料讀取失敗';
+            console.error(error);
         }
     }
 
     function copyToClipboard(text) {
         navigator.clipboard.writeText(text).then(() => {
             showToast("✔ 已複製: " + text);
-        }).catch(err => {
-            showToast("✘ 複製失敗");
-        });
+        }).catch(err => showToast("✘ 複製失敗"));
     }
 
     function showToast(message) {
