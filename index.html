@@ -37,16 +37,13 @@
             text-shadow: 0 0 10px var(--accent-glow);
         }
 
-        /* --- 核心排版：卡片容器 --- */
         .grid-container {
             display: grid;
-            /* 一行三個，如果螢幕太小會自動換行 */
             grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
             gap: 20px;
             margin-top: 20px;
         }
 
-        /* 單個商品卡片 */
         .item-card {
             background: var(--bg-card);
             border-radius: 12px;
@@ -62,7 +59,6 @@
             box-shadow: 0 4px 15px rgba(0,0,0,0.5);
         }
 
-        /* 上半部：資訊與圖片 */
         .card-top {
             display: flex;
             justify-content: space-between;
@@ -77,10 +73,7 @@
             font-size: 16px;
         }
 
-        .info-row {
-            display: flex;
-            align-items: flex-start;
-        }
+        .info-row { display: flex; align-items: flex-start; }
 
         .label {
             white-space: nowrap;
@@ -88,14 +81,13 @@
             margin-right: 5px;
         }
 
-        /* 圖片樣式 */
         .img-area {
             width: 100px;
             height: 100px;
             margin-left: 10px;
             background: #121212;
             border-radius: 8px;
-            overflow: visible; /* 為了放大效果 */
+            overflow: visible;
             display: flex;
             align-items: center;
             justify-content: center;
@@ -115,10 +107,7 @@
             box-shadow: 0 0 15px var(--accent-glow);
         }
 
-        /* 下半部：ID 複製按鈕 */
-        .id-area {
-            margin-top: auto;
-        }
+        .id-area { margin-top: auto; }
 
         .copy-item {
             cursor: pointer;
@@ -127,7 +116,7 @@
             background-color: #1a1a1a;
             color: var(--text-highlight);
             font-weight: bold;
-            font-size: 20px; /* 加大文字 */
+            font-size: 20px;
             text-align: center;
             border: 1px solid var(--border-color);
             transition: all 0.2s;
@@ -143,10 +132,8 @@
 
         .copy-item:active { transform: scale(0.98); }
 
-        /* 載入中動畫 */
         #loader { text-align: center; font-size: 18px; padding: 60px; }
 
-        /* Toast 提示 */
         #toast {
             visibility: hidden; 
             min-width: 250px; 
@@ -174,25 +161,23 @@
 
 <div class="container">
     <h2>正版商品ID(點ID複製)</h2>
-    
     <div id="loader">同步雲端資料中...</div>
-    
-    <div id="gridContainer" class="grid-container" style="display: none;">
-        </div>
+    <div id="gridContainer" class="grid-container" style="display: none;"></div>
 </div>
 
 <div id="toast">已複製到剪貼簿</div>
 
 <script>
     const DATA_URL = 'https://raw.githubusercontent.com/xMASAKIx/MSW-ID/refs/heads/main/data.json'; 
-    // 這裡定義你的分類對照表
+    
+    // 分類對照表
     const CATEGORY_MAP = {
         "20372100000223997": "別時",
         "20372100005338018": "小波",
         "20372100003479787": "卡提",
         "20372100003567962": "妃姬",
         "20372100008583110": "ES(夜夜發貨號)",
-        "20372100005894481":  "平行",
+        "20372100005894481": "平行",
         "20372100003096391": "幽幽子",
         "20372100001110251": "mimiming天使",
         "20372100002790823": "mimiming天使",
@@ -216,43 +201,10 @@
         "20372100002553986": "殺手兔",
         "20372100006407090": "北極熊初音",
         "20372100009098159": "哥倫比雅",
-        "default": "其他" // 如果代碼不在名單內，顯示這個
+        "default": "其他作者"
     };
-    
-    async function loadData() {
-        try {
-            const response = await fetch(`${DATA_URL}?t=${new Date().getTime()}`);
-            let data = await response.json();
-            
-            const container = document.getElementById('gridContainer');
-            container.innerHTML = ''; 
-    
-            // --- 核心自動辨識邏輯 ---
-            const groups = data.reduce((acc, item) => {
-                // 從 item.author (或你原本存放 tJL7G 的欄位) 取得代碼
-                const code = item.author || "default"; 
-                
-                // 使用對照表把代碼「翻譯」成名字
-                const displayName = CATEGORY_MAP[code] || CATEGORY_MAP["default"];
-                
-                if (!acc[displayName]) acc[displayName] = [];
-                acc[displayName].push(item);
-                return acc;
-            }, {});
-    
-            // 根據翻譯後的名字分堆顯示
-            for (const name in groups) {
-                const header = document.createElement('div');
-                header.style.gridColumn = "1 / -1"; 
-                header.innerHTML = `<h3 style="color: #39ff14;">● ${name}</h3>`;
-                container.appendChild(header);
-    
-                groups[name].forEach(item => {
-                    container.appendChild(createCard(item));
-                });
-            }
-            
-    // 建立單個卡片的函式 (分離出來讓分類邏輯更簡潔)
+
+    // 建立卡片
     function createCard(item) {
         const idLines = item.id.split('\n');
         let idHtml = '';
@@ -276,9 +228,7 @@
                     <img src="${item.img}" class="item-img" onerror="this.src='https://via.placeholder.com/100/252525/39ff14?text=No+Img'">
                 </div>
             </div>
-            <div class="id-area">
-                ${idHtml}
-            </div>
+            <div class="id-area">${idHtml}</div>
         `;
         return card;
     }
@@ -287,45 +237,40 @@
         try {
             const response = await fetch(`${DATA_URL}?t=${new Date().getTime()}`);
             let data = await response.json();
-            
-            // 如果你想讓最新的作品在最上面，可以先 reverse
             data.reverse();
 
             const container = document.getElementById('gridContainer');
             container.innerHTML = ''; 
 
-            // --- 核心分類邏輯 ---
-            // 1. 先把資料按作者分組
+            // 核心分類邏輯
             const groups = data.reduce((acc, item) => {
-                const author = item.author || "未分類作者"; // 如果沒有填作者，顯示為未分類
-                if (!acc[author]) acc[author] = [];
-                acc[author].push(item);
+                const code = item.author || "default"; 
+                const displayName = CATEGORY_MAP[code] || CATEGORY_MAP["default"];
+                if (!acc[displayName]) acc[displayName] = [];
+                acc[displayName].push(item);
                 return acc;
             }, {});
 
-            // 2. 根據作者一組一組顯示出來
-            for (const author in groups) {
-                // 插入作者大標題（橫跨整列）
+            // 渲染
+            for (const name in groups) {
                 const header = document.createElement('div');
                 header.style.gridColumn = "1 / -1"; 
                 header.style.padding = "20px 10px 10px 10px";
                 header.style.borderBottom = "1px solid #3d3d3d";
                 header.style.marginBottom = "10px";
-                header.innerHTML = `<h3 style="color: #39ff14; margin: 0;">● 作者：${author} <small style="color: #666; font-size: 14px;">(${groups[author].length} 件作品)</small></h3>`;
+                header.innerHTML = `<h3 style="color: #39ff14; margin: 0;">● 作者：${name} <small style="color: #666; font-size: 14px;">(${groups[name].length} 件作品)</small></h3>`;
                 container.appendChild(header);
 
-                // 插入該作者的所有卡片
-                groups[author].forEach(item => {
-                    const card = createCard(item);
-                    container.appendChild(card);
+                groups[name].forEach(item => {
+                    container.appendChild(createCard(item));
                 });
             }
 
             document.getElementById('loader').style.display = 'none';
             container.style.display = 'grid';
         } catch (error) {
-            document.getElementById('loader').innerText = '✘ 資料讀取失敗 (請檢查 JSON 格式或欄位)';
-            console.error('Fetch error:', error);
+            document.getElementById('loader').innerText = '✘ 資料讀取失敗 (請檢查 JSON)';
+            console.error('Error:', error);
         }
     }
 
@@ -346,6 +291,5 @@
 
     window.onload = loadData;
 </script>
-
 </body>
 </html>
