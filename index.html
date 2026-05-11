@@ -247,12 +247,23 @@
 
         // --- 核心修改：排序邏輯 ---
         // 把 Set 轉成陣列，並排除掉「其他」這個名字
-        const otherLabel = CATEGORY_MAP["default"]; // 取得你定義的「其他」文字
-        let sortedAuthors = Array.from(authorsInData)
-                                 .filter(name => name !== otherLabel) // 先拿掉其他
-                                 .sort(); // 剩下的按筆畫/字母排序
+        const otherLabel = CATEGORY_MAP["default"] || "其他";
+        const weaponLabel = "武器";
 
-        // 如果原本的名單裡有「其他」，就把它加回陣列的最末端
+        // 1. 取得目前資料中出現過的作者，並排除掉「武器」與「其他」
+        let sortedAuthors = Array.from(authorsInData).filter(name => 
+            name !== otherLabel && name !== weaponLabel
+        );
+
+        // 2. 將一般作者按筆劃/字母排序
+        sortedAuthors.sort();
+
+        // 3. 檢查原始資料是否存在「武器」，有的話塞入倒數第二位
+        if (authorsInData.has(weaponLabel)) {
+            sortedAuthors.push(weaponLabel);
+        }
+
+        // 4. 檢查原始資料是否存在「其他」，有的話塞入最後一位
         if (authorsInData.has(otherLabel)) {
             sortedAuthors.push(otherLabel);
         }
