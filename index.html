@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>正版商品ID(按作者分類)</title>
+    <title>正版商品ID</title>
     <style>
         :root {
             --bg-body: #121212;
@@ -20,8 +20,7 @@
             font-family: "Microsoft JhengHei", "Heiti TC", sans-serif; 
             background-color: var(--bg-body); 
             color: var(--text-main);
-            margin: 0; 
-            padding: 20px; 
+            margin: 0; padding: 20px; 
         }
         
         .container { max-width: 1200px; margin: 0 auto; }
@@ -33,89 +32,44 @@
             margin-bottom: 30px;
         }
 
-        /* --- 分類按鈕區域 --- */
         .filter-group {
-            display: flex;
-            flex-wrap: wrap;
-            gap: 10px;
-            justify-content: center;
-            margin-bottom: 30px;
-            padding: 15px;
-            background: var(--bg-container);
-            border-radius: 15px;
-            border: 1px solid var(--border-color);
+            display: flex; flex-wrap: wrap; gap: 10px; justify-content: center;
+            margin-bottom: 20px; padding: 15px; background: var(--bg-container);
+            border-radius: 15px; border: 1px solid var(--border-color);
         }
+
+        #partFilterGroup { background: #1a1a1a; margin-bottom: 10px; }
 
         .filter-btn {
-            padding: 8px 18px;
-            background: #1a1a1a;
-            color: var(--text-main);
-            border: 1px solid var(--border-color);
-            border-radius: 20px;
-            cursor: pointer;
-            font-weight: bold;
-            transition: all 0.3s;
+            padding: 8px 18px; background: #1a1a1a; color: var(--text-main);
+            border: 1px solid var(--border-color); border-radius: 20px;
+            cursor: pointer; font-weight: bold; transition: all 0.3s;
         }
 
-        .filter-btn:hover {
-            border-color: var(--text-highlight);
-            color: var(--text-highlight);
-            box-shadow: 0 0 8px var(--accent-glow);
-        }
+        .filter-btn:hover { border-color: var(--text-highlight); color: var(--text-highlight); box-shadow: 0 0 8px var(--accent-glow); }
+        .filter-btn.active { background: var(--text-highlight); color: #000; border-color: var(--text-highlight); box-shadow: 0 0 15px var(--accent-glow); }
 
-        .filter-btn.active {
-            background: var(--text-highlight);
-            color: #000;
-            border-color: var(--text-highlight);
-            box-shadow: 0 0 15px var(--accent-glow);
-        }
-
-        /* --- 卡片排版 --- */
-        .grid-container {
-            display: grid;
-            grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
-            gap: 20px;
-        }
+        .grid-container { display: grid; grid-template-columns: repeat(auto-fill, minmax(320px, 1fr)); gap: 20px; }
 
         .item-card {
-            background: var(--bg-card);
-            border-radius: 12px;
-            border: 1px solid var(--border-color);
-            padding: 15px;
-            display: flex;
-            flex-direction: column;
-            transition: transform 0.2s;
+            background: var(--bg-card); border-radius: 12px; border: 1px solid var(--border-color);
+            padding: 15px; display: flex; flex-direction: column; transition: transform 0.2s;
         }
 
-        .item-card:hover {
-            border-color: var(--text-highlight);
-            box-shadow: 0 4px 15px rgba(0,0,0,0.5);
-        }
-
+        .item-card:hover { border-color: var(--text-highlight); box-shadow: 0 4px 15px rgba(0,0,0,0.5); }
         .card-top { display: flex; justify-content: space-between; margin-bottom: 15px; }
         .info-area { flex: 1; display: flex; flex-direction: column; gap: 8px; font-size: 16px; }
         .info-row { display: flex; align-items: flex-start; }
         .label { white-space: nowrap; color: #aaa; margin-right: 5px; }
-
-        .img-area {
-            width: 100px; height: 100px; margin-left: 10px; background: #121212;
-            border-radius: 8px; display: flex; align-items: center; justify-content: center;
-        }
-
-        .item-img {
-            max-width: 100%; max-height: 100%; border-radius: 4px;
-            cursor: zoom-in; transition: transform 0.3s;
-        }
-
+        .img-area { width: 100px; height: 100px; margin-left: 10px; background: #121212; border-radius: 8px; display: flex; align-items: center; justify-content: center; }
+        .item-img { max-width: 100%; max-height: 100%; border-radius: 4px; cursor: zoom-in; transition: transform 0.3s; }
         .item-img:hover { transform: scale(2.5); z-index: 100; box-shadow: 0 0 15px var(--accent-glow); }
 
-        .id-area { margin-top: auto; }
         .copy-item {
             cursor: pointer; padding: 12px; border-radius: 6px; background-color: #1a1a1a;
             color: var(--text-highlight); font-weight: bold; font-size: 20px; text-align: center;
             border: 1px solid var(--border-color); transition: all 0.2s; word-break: break-all; margin-bottom: 5px;
         }
-
         .copy-item:hover { background-color: var(--hover-bg); border-color: var(--text-highlight); box-shadow: 0 0 10px var(--accent-glow); }
 
         #loader { text-align: center; font-size: 18px; padding: 60px; }
@@ -133,10 +87,9 @@
 <body>
 
 <div class="container">
-    <h2>正版商品ID(按作者分類)</h2>
-    
+    <h2>正版商品ID</h2>
+    <div id="partFilterGroup" class="filter-group" style="display: none;"></div>
     <div id="filterGroup" class="filter-group" style="display: none;"></div>
-
     <div id="loader">同步雲端資料中...</div>
     <div id="gridContainer" class="grid-container" style="display: none;"></div>
 </div>
@@ -145,53 +98,41 @@
 
 <script>
     const DATA_URL = 'https://raw.githubusercontent.com/xMASAKIx/MSW-ID/refs/heads/main/data.json'; 
-    let allRawData = []; // 儲存所有原始資料
+    let allRawData = []; 
 
     const CATEGORY_MAP = {
-        "20372100000223997": "別時",
-        "20372100005338018": "小波",
-        "20372100003479787": "卡提",
-        "20372100003567962": "妃姬",
-        "20372100008583110": "ES(夜夜發貨號)",
-        "20372100005894481": "平行",
-        "20372100003096391": "幽幽子",
-        "20372100001110251": "mimiming天使",
-        "20372100002790823": "mimiming天使",
-        "20372100004235799": "死靈",
-        "20372100005999546": "TJ01",
-        "20372100005764633": "TJ02",
-        "20372100005118171": "兔仔",
-        "20372000486671177": "韓國愛芮",
-        "20372100005311821": "照",
-        "20372100003863084": "阿卡利",
-        "20372100000180209": "PLAT",
-        "20372100003462165": "奧米加獸",
-        "20372100000208070": "珊璞",
-        "20372100002340154": "金武金",
-        "20372100005770592": "PAKA",
-        "20372100005385883": "白狐",
-        "20372100005694709": "小別時",
-        "20372100008443475": "paka1",
-        "20372100005802883": "paka2",
-        "20372100008359961": "沖田",
-        "20372100002553986": "殺手兔",
-        "20372100006407090": "北極熊初音",
-        "20372100009098159": "哥倫比雅",
-        "20372100007473992": "蕾米&芙蘭",
-        "20372100004981518": "AWAWA",
-        "20372100003328034": "Coya奇術",
-        "20372100000224166": "別時",
-        "20372001057320745": "MIKA",
-        "20372100004546916": "MIKA名牌",
-        "20372100005833987": "菲特",
-        "20372100005779084": "簡&卡媽",
-        "20372100007840052": "惡魔狐",
-        "20372100007791322": "奶鱈",
-        "20372100007023711": "三三",
-        "20372100002684295": "杏葉",
-        "1": "武器",
+        "20372100000223997": "別時", "20372100005338018": "小波", "20372100003479787": "卡提",
+        "20372100003567962": "妃姬", "20372100008583110": "ES(夜夜發貨號)", "20372100005894481": "平行",
+        "20372100003096391": "幽幽子", "20372100001110251": "mimiming天使", "20372100002790823": "mimiming天使",
+        "20372100004235799": "死靈", "20372100005999546": "TJ01", "20372100005764633": "TJ02",
+        "20372100005118171": "兔仔", "20372000486671177": "韓國愛芮", "20372100005311821": "照",
+        "20372100003863084": "阿卡利", "20372100000180209": "PLAT", "20372100003462165": "奧米加獸",
+        "20372100000208070": "珊璞", "20372100002340154": "金武金", "20372100005770592": "PAKA",
+        "20372100005385883": "白狐", "20372100005694709": "小別時", "20372100008443475": "paka1",
+        "20372100005802883": "paka2", "20372100008359961": "沖田", "20372100002553986": "殺手兔",
+        "20372100006407090": "北極熊初音", "20372100009098159": "哥倫比雅", "20372100007473992": "蕾米&芙蘭",
+        "20372100004981518": "AWAWA", "20372100003328034": "Coya奇術", "20372100000224166": "別時",
+        "20372001057320745": "MIKA", "20372100004546916": "MIKA名牌", "20372100005833987": "菲特",
+        "20372100005779084": "簡&卡媽", "20372100007840052": "惡魔狐", "20372100007791322": "奶鱈",
+        "20372100007023711": "三三", "20372100002684295": "杏葉",
         "default": "其他"
     };
+
+    // 1. 部位中英文對照表
+    const PART_DISPLAY_MAP = {
+        "HAIR": "髮型",
+        "HAT": "帽子",
+        "CAPE": "披風",
+        "TOP": "上衣",
+        "GLOVE": "手套",
+        "OVERALL": "大衣",
+        "BOTTOM": "褲裙",
+        "SHOES": "鞋子",
+        "WEAPON": "武器" // 新增武器在部位分類
+    };
+
+    // 2. 部位排序順序 (武器放在最後)
+    const PART_ORDER = ["HAIR", "HAT", "CAPE", "TOP", "GLOVE", "OVERALL", "BOTTOM", "SHOES", "WEAPON"];
 
     function createCard(item) {
         const idLines = item.id.split('\n');
@@ -221,54 +162,70 @@
         return card;
     }
 
-    // 渲染分類按鈕
-    // 渲染分類按鈕
+    // 渲染部位分類按鈕
+    function renderPartFilters(data) {
+        const partGroup = document.getElementById('partFilterGroup');
+        partGroup.innerHTML = '';
+
+        PART_ORDER.forEach(partKey => {
+            // 邏輯修改：
+            // 如果是 WEAPON，我們要抓 author 為 "1" 的商品或是 avatarType 為 "WEAPON" 的商品
+            // 如果是一般部位，抓 avatarType
+            const filteredData = data.filter(item => {
+                const type = (item.avatarType || "").toUpperCase();
+                if (partKey === "WEAPON") {
+                    return type === "WEAPON" || item.author === "1";
+                }
+                return type === partKey;
+            });
+
+            if (filteredData.length > 0) {
+                const btn = document.createElement('button');
+                btn.className = 'filter-btn';
+                btn.innerText = `${PART_DISPLAY_MAP[partKey]} (${filteredData.length})`;
+                btn.onclick = function() {
+                    switchActiveBtn(this);
+                    displayData(filteredData);
+                    document.querySelectorAll('#filterGroup .filter-btn').forEach(b => b.classList.remove('active'));
+                };
+                partGroup.appendChild(btn);
+            }
+        });
+        partGroup.style.display = 'flex';
+    }
+
+    // 渲染作者分類
     function renderFilters(data) {
         const filterGroup = document.getElementById('filterGroup');
         const authorsInData = new Set();
         
-        // 取得目前資料中所有出現過的作者名稱
         data.forEach(item => {
+            // 關鍵修改：如果該商品已經被歸類為「武器」(author="1")，在作者區我們改看它是否要顯示
+            // 這裡我們維持原樣，但排序時會把「其他」墊底
             const name = CATEGORY_MAP[item.author] || CATEGORY_MAP["default"];
-            authorsInData.add(name);
+            if (name !== "武器") { // 武器已經移到部位了，作者區不再顯示單獨的武器按鈕
+                authorsInData.add(name);
+            }
         });
 
         filterGroup.innerHTML = '';
         
-        // 1. 建立「全部」按鈕
         const allBtn = document.createElement('button');
         allBtn.className = 'filter-btn active';
         allBtn.innerText = `全部 (${data.length})`;
         allBtn.onclick = function() {
             switchActiveBtn(this);
             displayData(data);
+            document.querySelectorAll('#partFilterGroup .filter-btn').forEach(b => b.classList.remove('active'));
         };
         filterGroup.appendChild(allBtn);
 
-        // --- 核心修改：排序邏輯 ---
-        // 把 Set 轉成陣列，並排除掉「其他」這個名字
         const otherLabel = CATEGORY_MAP["default"] || "其他";
-        const weaponLabel = "武器";
 
-        // 1. 取得目前資料中出現過的作者，並排除掉「武器」與「其他」
-        let sortedAuthors = Array.from(authorsInData).filter(name => 
-            name !== otherLabel && name !== weaponLabel
-        );
+        // 作者排序：除了「其他」以外都按字母排序，其他墊底
+        let sortedAuthors = Array.from(authorsInData).filter(name => name !== otherLabel).sort();
+        if (authorsInData.has(otherLabel)) sortedAuthors.push(otherLabel);
 
-        // 2. 將一般作者按筆劃/字母排序
-        sortedAuthors.sort();
-
-        // 3. 檢查原始資料是否存在「武器」，有的話塞入倒數第二位
-        if (authorsInData.has(weaponLabel)) {
-            sortedAuthors.push(weaponLabel);
-        }
-
-        // 4. 檢查原始資料是否存在「其他」，有的話塞入最後一位
-        if (authorsInData.has(otherLabel)) {
-            sortedAuthors.push(otherLabel);
-        }
-
-        // 2. 依照排序後的順序建立按鈕
         sortedAuthors.forEach(authorName => {
             const authorData = data.filter(item => (CATEGORY_MAP[item.author] || CATEGORY_MAP["default"]) === authorName);
             const btn = document.createElement('button');
@@ -277,6 +234,7 @@
             btn.onclick = function() {
                 switchActiveBtn(this);
                 displayData(authorData);
+                document.querySelectorAll('#partFilterGroup .filter-btn').forEach(b => b.classList.remove('active'));
             };
             filterGroup.appendChild(btn);
         });
@@ -302,13 +260,13 @@
             allRawData = await response.json();
             allRawData.reverse();
 
-            renderFilters(allRawData);
+            renderPartFilters(allRawData); 
+            renderFilters(allRawData);     
             displayData(allRawData);
 
             document.getElementById('loader').style.display = 'none';
         } catch (error) {
             document.getElementById('loader').innerText = '✘ 資料讀取失敗';
-            console.error(error);
         }
     }
 
