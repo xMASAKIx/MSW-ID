@@ -168,17 +168,18 @@
         partGroup.innerHTML = '';
 
         PART_ORDER.forEach(partKey => {
-            // 邏輯修改：
-            // 如果是 WEAPON，我們要抓 author 為 "1" 的商品或是 avatarType 為 "WEAPON" 的商品
-            // 如果是一般部位，抓 avatarType
             const filteredData = data.filter(item => {
-                const type = (item.avatarType || "").toUpperCase();
+                // 修正重點：同時檢查 avatarType 與 avatartype (不分大小寫)
+                const type = (item.avatarType || item.avatartype || "").toUpperCase();
+                
                 if (partKey === "WEAPON") {
+                    // 武器邏輯：標籤是 WEAPON 或 作者代碼為 "1"
                     return type === "WEAPON" || item.author === "1";
                 }
                 return type === partKey;
             });
 
+            // 只有當該分類下有資料時才顯示按鈕
             if (filteredData.length > 0) {
                 const btn = document.createElement('button');
                 btn.className = 'filter-btn';
@@ -186,6 +187,7 @@
                 btn.onclick = function() {
                     switchActiveBtn(this);
                     displayData(filteredData);
+                    // 點擊部位時，取消作者區的 active 狀態
                     document.querySelectorAll('#filterGroup .filter-btn').forEach(b => b.classList.remove('active'));
                 };
                 partGroup.appendChild(btn);
