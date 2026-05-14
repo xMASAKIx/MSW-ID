@@ -61,6 +61,17 @@
         .info-area { flex: 1; display: flex; flex-direction: column; gap: 8px; font-size: 16px; }
         .info-row { display: flex; align-items: flex-start; }
         .label { white-space: nowrap; color: #aaa; margin-right: 5px; }
+        
+        /* 新增：作者連結樣式 */
+        .author-link {
+            color: var(--text-highlight);
+            cursor: pointer;
+            text-decoration: underline;
+            text-underline-offset: 4px;
+            transition: opacity 0.2s;
+        }
+        .author-link:hover { opacity: 0.7; }
+
         .img-area { width: 100px; height: 100px; margin-left: 10px; background: #121212; border-radius: 8px; display: flex; align-items: center; justify-content: center; }
         .item-img { max-width: 100%; max-height: 100%; border-radius: 4px; cursor: zoom-in; transition: transform 0.3s; }
         .item-img:hover { transform: scale(2.5); z-index: 100; box-shadow: 0 0 15px var(--accent-glow); }
@@ -119,23 +130,16 @@
         "default": "未分類"
     };
 
-    // 1. 部位中英文對照表
     const PART_DISPLAY_MAP = {
-        "HAIR": "髮型",
-        "HAT": "帽子",
-        "CAPE": "披風",
-        "TOP": "上衣",
-        "GLOVE": "手套",
-        "OVERALL": "大衣",
-        "BOTTOM": "褲裙",
-        "SHOES": "鞋子",
-        "WEAPON": "武器" // 新增武器在部位分類
+        "HAIR": "髮型", "HAT": "帽子", "CAPE": "披風", "TOP": "上衣", "GLOVE": "手套",
+        "OVERALL": "大衣", "BOTTOM": "褲裙", "SHOES": "鞋子", "WEAPON": "武器"
     };
 
-    // 2. 部位排序順序 (武器放在最後)
     const PART_ORDER = ["HAIR", "HAT", "CAPE", "TOP", "GLOVE", "OVERALL", "BOTTOM", "SHOES", "WEAPON"];
 
     function createCard(item) {
+        // 獲取當前商品對應的作者名稱
+        const authorName = CATEGORY_MAP[item.author] || CATEGORY_MAP["default"];
         const idLines = item.id.split('\n');
         let idHtml = '';
         idLines.forEach(line => {
@@ -150,7 +154,10 @@
         card.innerHTML = `
             <div class="card-top">
                 <div class="info-area">
-                    <div class="info-row"><span class="label">商品名稱：</span><span>${item.keyword}</span></div>
+                    <div class="info-row">
+                        <span class="label">商品名稱：</span>
+                        <span class="author-link" onclick="filterByAuthorName('${authorName}')">${item.keyword}</span>
+                    </div>
                     <div class="info-row"><span class="label">商品價格：</span><span>${item.wc} WC</span></div>
                     <div class="info-row"><span class="label">商品ID</span></div>
                 </div>
@@ -163,24 +170,33 @@
         return card;
     }
 
-    // 渲染部位分類按鈕
+    // 新增：點擊名稱後的篩選邏輯
+    function filterByAuthorName(authorName) {
+        const buttons = document.querySelectorAll('#filterGroup .filter-btn');
+        let targetBtn = null;
+        
+        buttons.forEach(btn => {
+            // 比對按鈕名稱（去掉數量括號的部分）
+            if (btn.innerText.startsWith(authorName + " (") || btn.innerText === authorName) {
+                targetBtn = btn;
+            }
+        });
+
+        if (targetBtn) {
+            targetBtn.click(); // 模擬點擊作者按鈕
+            window.scrollTo({ top: 0, behavior: 'smooth' }); // 平滑捲動到頂部
+        }
+    }
+
     function renderPartFilters(data) {
         const partGroup = document.getElementById('partFilterGroup');
         partGroup.innerHTML = '';
-
         PART_ORDER.forEach(partKey => {
             const filteredData = data.filter(item => {
-                // 修正重點：同時檢查 avatarType 與 avatartype (不分大小寫)
                 const type = (item.avatarType || item.avatartype || "").toUpperCase();
-                
-                if (partKey === "WEAPON") {
-                    // 武器邏輯：標籤是 WEAPON 或 作者代碼為 "1"
-                    return type === "WEAPON" || item.author === "1";
-                }
+                if (partKey === "WEAPON") return type === "WEAPON" || item.author === "1";
                 return type === partKey;
             });
-
-            // 只有當該分類下有資料時才顯示按鈕
             if (filteredData.length > 0) {
                 const btn = document.createElement('button');
                 btn.className = 'filter-btn';
@@ -188,7 +204,6 @@
                 btn.onclick = function() {
                     switchActiveBtn(this);
                     displayData(filteredData);
-                    // 點擊部位時，取消作者區的 active 狀態
                     document.querySelectorAll('#filterGroup .filter-btn').forEach(b => b.classList.remove('active'));
                 };
                 partGroup.appendChild(btn);
@@ -197,22 +212,15 @@
         partGroup.style.display = 'flex';
     }
 
-    // 渲染作者分類
     function renderFilters(data) {
         const filterGroup = document.getElementById('filterGroup');
         const authorsInData = new Set();
-        
         data.forEach(item => {
-            // 關鍵修改：如果該商品已經被歸類為「武器」(author="1")，在作者區我們改看它是否要顯示
-            // 這裡我們維持原樣，但排序時會把「其他」墊底
             const name = CATEGORY_MAP[item.author] || CATEGORY_MAP["default"];
-            if (name !== "武器") { // 武器已經移到部位了，作者區不再顯示單獨的武器按鈕
-                authorsInData.add(name);
-            }
+            if (name !== "武器") authorsInData.add(name);
         });
 
         filterGroup.innerHTML = '';
-        
         const allBtn = document.createElement('button');
         allBtn.className = 'filter-btn active';
         allBtn.innerText = `全部 (${data.length})`;
@@ -223,9 +231,7 @@
         };
         filterGroup.appendChild(allBtn);
 
-        const otherLabel = CATEGORY_MAP["default"] || "其他";
-
-        // 作者排序：除了「其他」以外都按字母排序，其他墊底
+        const otherLabel = CATEGORY_MAP["default"] || "未分類";
         let sortedAuthors = Array.from(authorsInData).filter(name => name !== otherLabel).sort();
         if (authorsInData.has(otherLabel)) sortedAuthors.push(otherLabel);
 
@@ -241,7 +247,6 @@
             };
             filterGroup.appendChild(btn);
         });
-
         filterGroup.style.display = 'flex';
     }
 
@@ -262,11 +267,9 @@
             const response = await fetch(`${DATA_URL}?t=${new Date().getTime()}`);
             allRawData = await response.json();
             allRawData.reverse();
-
             renderPartFilters(allRawData); 
             renderFilters(allRawData);     
             displayData(allRawData);
-
             document.getElementById('loader').style.display = 'none';
         } catch (error) {
             document.getElementById('loader').innerText = '✘ 資料讀取失敗';
@@ -285,7 +288,6 @@
         toast.className = "show";
         setTimeout(() => { toast.className = toast.className.replace("show", ""); }, 2500);
     }
-
     window.onload = loadData;
 </script>
 </body>
