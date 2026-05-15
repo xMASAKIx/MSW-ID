@@ -29,9 +29,57 @@
             color: var(--text-highlight); 
             text-align: center; 
             text-shadow: 0 0 10px var(--accent-glow);
-            margin-bottom: 30px;
+            margin-bottom: 20px;
         }
 
+        /* --- 新增：匯出功能控制面板 --- */
+        .export-panel {
+            background: var(--bg-container);
+            border: 1px solid var(--border-color);
+            border-radius: 12px;
+            padding: 12px 20px;
+            margin-bottom: 15px;
+            display: flex;
+            flex-wrap: wrap;
+            gap: 15px;
+            align-items: center;
+            justify-content: space-between;
+        }
+
+        .btn-group { display: flex; gap: 10px; }
+
+        button.admin-btn {
+            padding: 8px 16px;
+            background: #1a1a1a;
+            color: var(--text-main);
+            border: 1px solid var(--border-color);
+            border-radius: 8px;
+            cursor: pointer;
+            font-weight: bold;
+            transition: all 0.2s;
+        }
+
+        button.admin-btn:hover {
+            border-color: var(--text-highlight);
+            color: var(--text-highlight);
+            box-shadow: 0 0 8px var(--accent-glow);
+        }
+
+        button.admin-btn.primary {
+            background: var(--text-highlight);
+            color: #000;
+            border-color: var(--text-highlight);
+        }
+
+        button.admin-btn.primary:hover {
+            box-shadow: 0 0 15px var(--accent-glow);
+            color: #000;
+        }
+
+        .status-info { font-size: 14px; color: #aaa; }
+        #selectedCount { color: var(--text-highlight); font-weight: bold; }
+
+        /* --- 分類按鈕區域 --- */
         .filter-group {
             display: flex; flex-wrap: wrap; gap: 5px; justify-content: center;
             margin-bottom: 10px; padding: 10px; background: var(--bg-container);
@@ -49,20 +97,65 @@
         .filter-btn:hover { border-color: var(--text-highlight); color: var(--text-highlight); box-shadow: 0 0 8px var(--accent-glow); }
         .filter-btn.active { background: var(--text-highlight); color: #000; border-color: var(--text-highlight); box-shadow: 0 0 15px var(--accent-glow); }
 
+        /* --- 卡片排版 --- */
         .grid-container { display: grid; grid-template-columns: repeat(auto-fill, minmax(320px, 1fr)); gap: 20px; }
 
         .item-card {
             background: var(--bg-card); border-radius: 12px; border: 1px solid var(--border-color);
-            padding: 15px; display: flex; flex-direction: column; transition: transform 0.2s;
+            padding: 15px; display: flex; flex-direction: column; position: relative; transition: transform 0.2s;
         }
 
         .item-card:hover { border-color: var(--text-highlight); box-shadow: 0 4px 15px rgba(0,0,0,0.5); }
-        .card-top { display: flex; justify-content: space-between; margin-bottom: 15px; }
+
+        /* --- 新增：卡片自訂核取方塊樣式 --- */
+        .card-checkbox-label {
+            position: absolute;
+            top: 14px;
+            left: 14px;
+            cursor: pointer;
+            z-index: 10;
+        }
+
+        .card-checkbox-label input { position: absolute; opacity: 0; width: 0; height: 0; }
+
+        .card-checkmark {
+            display: block;
+            height: 18px;
+            width: 18px;
+            background-color: #1a1a1a;
+            border: 1px solid var(--border-color);
+            border-radius: 4px;
+            position: relative;
+            transition: all 0.2s;
+        }
+
+        .card-checkbox-label:hover input ~ .card-checkmark { border-color: var(--text-highlight); }
+        .card-checkbox-label input:checked ~ .card-checkmark {
+            background-color: var(--text-highlight);
+            border-color: var(--text-highlight);
+            box-shadow: 0 0 8px var(--accent-glow);
+        }
+
+        .card-checkmark:after {
+            content: "";
+            position: absolute;
+            display: none;
+            left: 6px;
+            top: 2px;
+            width: 4px;
+            height: 9px;
+            border: solid black;
+            border-width: 0 2px 2px 0;
+            transform: rotate(45deg);
+        }
+        .card-checkbox-label input:checked ~ .card-checkmark:after { display: block; }
+
+        /* 縮排頂部欄位，預留空間給左上角勾選方塊 */
+        .card-top { display: flex; justify-content: space-between; margin-bottom: 15px; padding-left: 24px; }
         .info-area { flex: 1; display: flex; flex-direction: column; gap: 8px; font-size: 16px; }
         .info-row { display: flex; align-items: flex-start; }
         .label { white-space: nowrap; color: #aaa; margin-right: 5px; }
         
-        /* 新增：作者連結樣式 */
         .author-link {
             color: var(--text-highlight);
             cursor: pointer;
@@ -74,6 +167,7 @@
         .item-img { max-width: 100%; max-height: 100%; border-radius: 4px; cursor: zoom-in; transition: transform 0.3s; }
         .item-img:hover { transform: scale(2.5); z-index: 100; box-shadow: 0 0 15px var(--accent-glow); }
 
+        .id-area { margin-top: auto; }
         .copy-item {
             cursor: pointer; padding: 12px; border-radius: 6px; background-color: #1a1a1a;
             color: var(--text-highlight); font-weight: bold; font-size: 20px; text-align: center;
@@ -97,6 +191,17 @@
 
 <div class="container">
     <h2>正版商品ID(點名稱可看作者其他造型)</h2>
+    
+    <div id="exportPanel" class="export-panel" style="display: none;">
+        <div class="btn-group">
+            <button id="selectAllBtn" class="admin-btn" onclick="toggleSelectAll()">全選功能</button>
+            <button id="exportBtn" class="admin-btn primary" onclick="exportJSON()">匯出已選取 JSON</button>
+        </div>
+        <div class="status-info">
+            目前已勾選：<span id="selectedCount">0</span> 筆造型資料
+        </div>
+    </div>
+
     <div id="partFilterGroup" class="filter-group" style="display: none;"></div>
     <div id="filterGroup" class="filter-group" style="display: none;"></div>
     <div id="loader">同步雲端資料中...</div>
@@ -108,6 +213,9 @@
 <script>
     const DATA_URL = 'https://raw.githubusercontent.com/xMASAKIx/MSW-ID/refs/heads/main/data.json'; 
     let allRawData = []; 
+    let currentFiltered = [];        // 儲存當前畫面上篩選過濾後的項目
+    let selectedItemIds = new Set();  // 使用全域 Set 記憶被勾選的原始完整 ID 欄位字串
+    let isAllSelected = false;
 
     const CATEGORY_MAP = {
         "20372100000223997": "別時", "20372100005338018": "小波", "20372100003479787": "HEE",
@@ -124,7 +232,7 @@
         "20372001057320745": "MIKA", "20372100004546916": "MIKA", "20372100005833987": "菲特",
         "20372100005779084": "簡&卡媽", "20372100007840052": "惡魔狐", "20372100007791322": "奶鱈",
         "20372100007023711": "三三", "20372100002684295": "杏葉","20372100005046143": "TJ","20372100005568477": "火精靈",
-        "20372100007118040": "將軍", "20372100003462156": "奧米加獸","20372100008876779": "昔連","20372100004321168": "帕丘莉",
+ * "20372100007118040": "將軍", "20372100003462156": "奧米加獸","20372100008876779": "昔連","20372100004321168": "帕丘莉",
         "default": "未分類"
     };
 
@@ -136,7 +244,6 @@
     const PART_ORDER = ["HAIR", "HAT", "CAPE", "TOP", "GLOVE", "OVERALL", "BOTTOM", "SHOES", "WEAPON"];
 
     function createCard(item) {
-        // 獲取當前商品對應的作者名稱
         const authorName = CATEGORY_MAP[item.author] || CATEGORY_MAP["default"];
         const idLines = item.id.split('\n');
         let idHtml = '';
@@ -147,9 +254,16 @@
             }
         });
 
+        // 檢查當前項目先前是否在全域被選取
+        const isChecked = selectedItemIds.has(item.id) ? 'checked' : '';
+
         const card = document.createElement('div');
         card.className = 'item-card';
         card.innerHTML = `
+            <label class="card-checkbox-label">
+                <input type="checkbox" class="card-item-checkbox" ${isChecked} onchange="handleCardCheck(this, '${item.id.replace(/'/g, "\\'")}')">
+                <span class="card-checkmark"></span>
+            </label>
             <div class="card-top">
                 <div class="info-area">
                     <div class="info-row">
@@ -168,21 +282,53 @@
         return card;
     }
 
-    // 新增：點擊名稱後的篩選邏輯
+    // 處理勾選狀態變更
+    function handleCardCheck(checkbox, rawId) {
+        if (checkbox.checked) {
+            selectedItemIds.add(rawId);
+        } else {
+            selectedItemIds.delete(rawId);
+        }
+        updateCountText();
+    }
+
+    // 更新選取數量文字
+    function updateCountText() {
+        document.getElementById('selectedCount').innerText = selectedItemIds.size;
+    }
+
+    // 本頁全選 / 取消全選
+    function toggleSelectAll() {
+        isAllSelected = !isAllSelected;
+        const currentCheckboxes = document.querySelectorAll('.card-item-checkbox');
+        
+        currentFiltered.forEach((item, idx) => {
+            if (isAllSelected) {
+                selectedItemIds.add(item.id);
+                if(currentCheckboxes[idx]) currentCheckboxes[idx].checked = true;
+            } else {
+                selectedItemIds.delete(item.id);
+                if(currentCheckboxes[idx]) currentCheckboxes[idx].checked = false;
+            }
+        });
+
+        document.getElementById('selectAllBtn').innerText = isAllSelected ? '取消本頁全選' : '全選功能';
+        updateCountText();
+    }
+
     function filterByAuthorName(authorName) {
         const buttons = document.querySelectorAll('#filterGroup .filter-btn');
         let targetBtn = null;
         
         buttons.forEach(btn => {
-            // 比對按鈕名稱（去掉數量括號的部分）
             if (btn.innerText.startsWith(authorName + " (") || btn.innerText === authorName) {
                 targetBtn = btn;
             }
         });
 
         if (targetBtn) {
-            targetBtn.click(); // 模擬點擊作者按鈕
-            window.scrollTo({ top: 0, behavior: 'smooth' }); // 平滑捲動到頂部
+            targetBtn.click();
+            window.scrollTo({ top: 0, behavior: 'smooth' });
         }
     }
 
@@ -201,6 +347,9 @@
                 btn.innerText = `${PART_DISPLAY_MAP[partKey]} (${filteredData.length})`;
                 btn.onclick = function() {
                     switchActiveBtn(this);
+                    isAllSelected = false;
+                    document.getElementById('selectAllBtn').innerText = '全選功能';
+                    currentFiltered = filteredData; // 更新目前頁面資料集
                     displayData(filteredData);
                     document.querySelectorAll('#filterGroup .filter-btn').forEach(b => b.classList.remove('active'));
                 };
@@ -224,6 +373,9 @@
         allBtn.innerText = `全部 (${data.length})`;
         allBtn.onclick = function() {
             switchActiveBtn(this);
+            isAllSelected = false;
+            document.getElementById('selectAllBtn').innerText = '全選功能';
+            currentFiltered = data; // 更新目前頁面資料集
             displayData(data);
             document.querySelectorAll('#partFilterGroup .filter-btn').forEach(b => b.classList.remove('active'));
         };
@@ -240,6 +392,9 @@
             btn.innerText = `${authorName} (${authorData.length})`;
             btn.onclick = function() {
                 switchActiveBtn(this);
+                isAllSelected = false;
+                document.getElementById('selectAllBtn').innerText = '全選功能';
+                currentFiltered = authorData; // 更新目前頁面資料集
                 displayData(authorData);
                 document.querySelectorAll('#partFilterGroup .filter-btn').forEach(b => b.classList.remove('active'));
             };
@@ -260,15 +415,78 @@
         container.style.display = 'grid';
     }
 
+    // 核心輸出邏輯：篩選全域選取的物件並轉換結構下載為具有 Tab 縮排的 JSON 檔
+    function exportJSON() {
+        if (selectedItemIds.size === 0) {
+            alert('請至少勾選一項造型商品再進行匯出！');
+            return;
+        }
+
+        const exportedData = [];
+        const nowInSeconds = Date.now() / 1000;
+        let counter = 0;
+
+        // 照順序掃描原始全體資料，確保導出的順序與原始一致
+        allRawData.forEach((originalItem) => {
+            if (selectedItemIds.has(originalItem.id)) {
+                // 擷取 ID 欄位的第一行作為基準 itemId 避免斷行衝突
+                const firstId = originalItem.id ? originalItem.id.split('\n')[0].trim() : '';
+                
+                // 動態演算微秒級時間戳記與 3 位數隨機碼，組裝出唯一的內部 ID
+                const itemTimestamp = (nowInSeconds + (counter * 0.001)).toFixed(3);
+                const generatedId = `${itemTimestamp}_${Math.floor(Math.random() * 900 + 100)}`;
+
+                const structuredObj = {
+                    "active": true,
+                    "createdAt": parseFloat(itemTimestamp),
+                    "currentPrice": parseInt(originalItem.wc) || 0,
+                    "currentStatus": "pending_sale",
+                    "id": generatedId,
+                    "itemId": firstId,
+                    "itemName": originalItem.keyword,
+                    "lastChecked": parseFloat(itemTimestamp),
+                    "matchByName": false,
+                    "maxPrice": 99999999.0,
+                    "rapidMode": false,
+                    "targetPrice": -1.0,
+                    "thumbnail": originalItem.img || ""
+                };
+
+                exportedData.push(structuredObj);
+                counter++;
+            }
+        });
+
+        // 轉換為帶 Tab 字元縮排的精緻特定 JSON 檔
+        const jsonString = JSON.stringify(exportedData, null, '\t');
+        const blob = new Blob([jsonString], { type: 'application/json;charset=utf-8;' });
+        const url = URL.createObjectURL(blob);
+        const link = document.createElement("a");
+        
+        link.setAttribute("href", url);
+        link.setAttribute("download", `msw_export_${Math.floor(nowInSeconds)}.json`);
+        link.style.visibility = 'hidden';
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+
+        showToast("✔ 特定格式 JSON 檔案已成功匯出下載！");
+    }
+
     async function loadData() {
         try {
             const response = await fetch(`${DATA_URL}?t=${new Date().getTime()}`);
             allRawData = await response.json();
             allRawData.reverse();
+            
+            currentFiltered = allRawData; // 預設當前可視範圍為全部資料
+            
             renderPartFilters(allRawData); 
             renderFilters(allRawData);     
             displayData(allRawData);
+            
             document.getElementById('loader').style.display = 'none';
+            document.getElementById('exportPanel').style.display = 'flex'; // 顯示管理面板
         } catch (error) {
             document.getElementById('loader').innerText = '✘ 資料讀取失敗';
         }
