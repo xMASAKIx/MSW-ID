@@ -185,6 +185,21 @@
         #toast.show { visibility: visible; animation: fadein 0.5s, fadeout 0.5s 2.5s; }
         @keyframes fadein { from {bottom: 0; opacity: 0;} to {bottom: 50px; opacity: 1;} }
         @keyframes fadeout { from {bottom: 50px; opacity: 1;} to {bottom: 0; opacity: 0;} }
+
+                /* 已擁有的商品標記樣式 */
+        .item-card.owned-item {
+            border-color: #39ff14 !important;
+            background-color: #1b261b;
+        }
+        .item-card.owned-item::after {
+            content: "★ 已擁有";
+            position: absolute;
+            top: 10px;
+            right: 10px;
+            color: #39ff14;
+            font-weight: bold;
+            font-size: 12px;
+        }
     </style>
 </head>
 <body>
@@ -209,6 +224,12 @@
 </div>
 
 <div id="toast">已複製到剪貼簿</div>
+
+    <div class="export-panel" style="background: #252525; padding: 12px 20px; margin-bottom: 15px; border-radius: 12px; border: 1px solid var(--text-highlight);">
+    <label style="color: var(--text-highlight); font-weight: bold; margin-right: 10px;">匯入衣櫃資料 (JSON)：</label>
+    <input type="file" id="jsonFile" accept=".json" onchange="importInventory(event)" style="color: white;">
+    <span id="importStatus" style="margin-left: 15px; color: #aaa; font-size: 14px;">尚未匯入衣櫃資料</span>
+</div>
 
 <script>
     const DATA_URL = 'https://raw.githubusercontent.com/xMASAKIx/MSW-ID/refs/heads/main/data.json'; 
@@ -505,6 +526,51 @@
         setTimeout(() => { toast.className = toast.className.replace("show", ""); }, 2500);
     }
     window.onload = loadData;
+
+    let ownedItemsSet = new Set(); // 存放衣櫃 ID 的集合
+
+function importInventory(event) {
+    const file = event.target.files[0];
+    if (!file) return;
+
+    const reader = new FileReader();
+    reader.onload = function(e) {
+        try {
+            const data = JSON.parse(e.target.result);
+            // 嘗試抓取各種可能的陣列結構
+            const items = Array.isArray(data) ? data : (data.items || data.avatars || []);
+            
+            // 將 itemId 提取並存入 Set
+            ownedItemsSet = new Set(items.map(item => (item.itemId || item).toString()));
+            
+            document.getElementById('importStatus').innerText = `✅ 已成功載入 ${ownedItemsSet.size} 件造型`;
+            
+            // 重新刷新目前畫面上的卡片狀態
+            displayData(currentFiltered);
+        } catch (err) {
+            alert("匯入失敗：檔案格式不正確。");
+        }
+    };
+    reader.readAsText(file);
+}
+
+    // 修改原有的 displayData 函數，加入比對邏輯
+    function displayData(data) {
+        const container = document.getElementById('gridContainer');
+        container.innerHTML = '';
+        data.forEach(item => {
+            const card = createCard(item);
+            
+            // 核心比對邏輯：取得該卡片對應的第一個 ID
+            const firstId = item.id.split('\n')[0].trim();
+            if (ownedItemsSet.has(firstId)) {
+                card.classList.add('owned-item');
+            }
+            
+            container.appendChild(card);
+        });
+        container.style.display = 'grid';
+    }
 </script>
 </body>
 </html>
